@@ -79,8 +79,12 @@ def upgrade() -> None:
         sa.Column("correlation_key", sa.String(255), nullable=False),
         sa.Column("anomaly_score", sa.Float()),
         sa.Column("metadata", postgresql.JSONB(), server_default="{}"),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column(
+            "created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        ),
+        sa.Column(
+            "updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        ),
         sa.UniqueConstraint("rule_id", "correlation_key", "status", name="uq_alert_open_window"),
     )
     op.create_index("ix_alerts_rule_id", "alerts", ["rule_id"])
@@ -105,8 +109,12 @@ def upgrade() -> None:
         sa.Column("mitre_attack", postgresql.JSONB(), server_default="[]"),
         sa.Column("parameters", postgresql.JSONB(), server_default="{}"),
         sa.Column("recommended_action", sa.Text(), nullable=False, server_default=""),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column(
+            "created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        ),
+        sa.Column(
+            "updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        ),
     )
     op.create_index("ix_detection_rules_category", "detection_rules", ["category"])
 
@@ -118,14 +126,20 @@ def upgrade() -> None:
         sa.Column("last_seen", sa.DateTime(timezone=True), nullable=False),
         sa.Column("event_count", sa.BigInteger(), nullable=False, server_default="0"),
         sa.Column("alert_count", sa.BigInteger(), nullable=False, server_default="0"),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column(
+            "created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        ),
+        sa.Column(
+            "updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        ),
     )
 
     op.create_table(
         "audit_logs",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column("timestamp", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column(
+            "timestamp", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        ),
         sa.Column("actor", sa.String(128), nullable=False, server_default="system"),
         sa.Column("action", sa.String(64), nullable=False),
         sa.Column("target_type", sa.String(64), nullable=False),
@@ -143,8 +157,12 @@ def upgrade() -> None:
         sa.Column("password_hash", sa.String(255), nullable=False),
         sa.Column("role", sa.String(32), nullable=False, server_default="analyst"),
         sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.true()),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column(
+            "created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        ),
+        sa.Column(
+            "updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        ),
     )
 
 

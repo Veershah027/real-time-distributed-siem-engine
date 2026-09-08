@@ -76,7 +76,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                     media_type="application/json",
                     headers={"Retry-After": "60", **SECURITY_HEADERS},
                 )
-        except Exception:  # noqa: BLE001 - never let the limiter take the API down
+        # the limiter must fail open — never 5xx the API because Redis blipped
+        except Exception:  # noqa: S110  # nosec
             pass
         return await call_next(request)
 

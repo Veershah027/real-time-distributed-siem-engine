@@ -214,11 +214,10 @@ class SecurityEvent(BaseModel):
         data = raw.model_dump() if isinstance(raw, RawEvent) else dict(raw)
         # Pull known extras that RawEvent.extra captured
         extra = {
-            k: v
-            for k, v in data.items()
-            if k not in cls.model_fields and k not in {"metadata"}
+            k: v for k, v in data.items() if k not in cls.model_fields and k not in {"metadata"}
         }
-        meta = dict(data.get("metadata") or {})
+        raw_meta = data.get("metadata")
+        meta = dict(raw_meta) if isinstance(raw_meta, dict) else {}
         for k, v in extra.items():
             meta.setdefault(k, v)
 

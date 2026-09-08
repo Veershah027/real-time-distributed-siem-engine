@@ -29,7 +29,8 @@ class Settings(BaseSettings):
     service_name: str = "siem-engine"
 
     # --- API ---
-    api_host: str = Field("0.0.0.0", alias="SIEM_API_HOST")  # noqa: S104 - containerised
+    # bind-all is intentional inside a container; override via SIEM_API_HOST
+    api_host: str = Field("0.0.0.0", alias="SIEM_API_HOST")  # noqa: S104  # nosec
     api_port: int = Field(8000, alias="SIEM_API_PORT")
     cors_origins: str = Field("http://localhost:5173", alias="SIEM_CORS_ORIGINS")
     rate_limit_per_minute: int = Field(240, alias="SIEM_RATE_LIMIT_PER_MINUTE")
@@ -129,7 +130,7 @@ class Settings(BaseSettings):
 
 @functools.lru_cache
 def get_settings() -> Settings:
-    return Settings()  # type: ignore[call-arg]
+    return Settings()
 
 
 settings = get_settings()

@@ -43,9 +43,9 @@ _STATISTICAL = [
 
 
 async def seed_rules() -> int:
-    rows = []
+    rows: list[dict] = []
     for cls in RULE_DETECTORS:
-        d = cls()
+        d = cls()  # type: ignore[abstract]
         rows.append(
             {
                 "rule_id": d.rule_id,

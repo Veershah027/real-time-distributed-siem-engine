@@ -99,25 +99,19 @@ class EventRepository:
             stmt = stmt.where(SecurityEventRow.message.ilike(like))
         return stmt
 
-    async def list(
+    async def search(
         self, *, limit: int = 50, offset: int = 0, **filters: Any
     ) -> tuple[list[SecurityEventRow], int]:
         base = self._filtered(**filters)
-        total = await self.session.scalar(
-            select(func.count()).select_from(base.subquery())
-        )
-        stmt = _paginate(
-            base.order_by(SecurityEventRow.timestamp.desc()), limit, offset
-        )
+        total = await self.session.scalar(select(func.count()).select_from(base.subquery()))
+        stmt = _paginate(base.order_by(SecurityEventRow.timestamp.desc()), limit, offset)
         rows = list((await self.session.scalars(stmt)).all())
         return rows, int(total or 0)
 
     async def get(self, event_id: uuid.UUID) -> SecurityEventRow | None:
         return await self.session.get(SecurityEventRow, event_id)
 
-    async def recent_for_ip(
-        self, source_ip: str, limit: int = 25
-    ) -> list[SecurityEventRow]:
+    async def recent_for_ip(self, source_ip: str, limit: int = 25) -> list[SecurityEventRow]:
         stmt = (
             select(SecurityEventRow)
             .where(SecurityEventRow.source_ip == source_ip)
@@ -170,9 +164,7 @@ class EventRepository:
             for et, c in (await self.session.execute(stmt)).all()
         ]
 
-    async def timeseries(
-        self, since: datetime, bucket_seconds: int = 60
-    ) -> list[dict[str, Any]]:
+    async def timeseries(self, since: datetime, bucket_seconds: int = 60) -> list[dict[str, Any]]:
         bucket = func.to_timestamp(
             func.floor(func.extract("epoch", SecurityEventRow.timestamp) / bucket_seconds)
             * bucket_seconds
@@ -212,7 +204,7 @@ class AlertRepository:
         await self.session.flush()
         return alert
 
-    async def list(
+    async def search(
         self,
         *,
         status: str | None = None,
@@ -231,9 +223,7 @@ class AlertRepository:
             base = base.where(Alert.rule_id == rule_id)
         if source_ip:
             base = base.where(Alert.source_ip == source_ip)
-        total = await self.session.scalar(
-            select(func.count()).select_from(base.subquery())
-        )
+        total = await self.session.scalar(select(func.count()).select_from(base.subquery()))
         stmt = _paginate(base.order_by(Alert.last_seen.desc()), limit, offset)
         rows = list((await self.session.scalars(stmt)).all())
         return rows, int(total or 0)

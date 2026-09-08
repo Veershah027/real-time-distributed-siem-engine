@@ -45,6 +45,7 @@ dev = [
     "pip-audit==2.7.3",
     "asgi-lifespan==2.1.0",
     "types-passlib",
+    "fakeredis==2.26.1",
 ]
 
 [tool.setuptools.packages.find]
@@ -58,11 +59,20 @@ src = ["app", "tests"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "C4", "SIM", "ASYNC", "S", "RUF"]
-ignore = ["S101", "B008"]  # asserts in tests; FastAPI Depends() default
+ignore = [
+    "S101",     # asserts (tests)
+    "B008",     # FastAPI Depends() in defaults
+    "E501",     # line length is enforced by `ruff format`, not the linter
+    "RUF001",   # ambiguous unicode in strings (σ etc. are intentional in analyst-facing text)
+    "RUF002",
+    "RUF003",
+    "RUF012",   # class-level default containers are deliberate on Detector subclasses
+]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S", "ASYNC"]
+"tests/**" = ["S", "ASYNC", "B017", "B018"]
 "alembic/**" = ["ALL"]
+"app/api/routes/auth.py" = ["S105"]  # "bearer" token_type literal, not a secret
 
 [tool.mypy]
 python_version = "3.11"
@@ -73,9 +83,23 @@ disallow_untyped_defs = false
 ignore_missing_imports = true
 exclude = ["alembic/", "tests/"]
 
+# redis-py's async client types several commands as `Awaitable[T] | T`, so
+# `await client.hget(...)` trips `misc` in strict await checking. The awaits are
+# correct at runtime; scope the suppression to the modules that touch Redis hashes.
+[[tool.mypy.overrides]]
+module = [
+    "app.services.metrics_service",
+    "app.streaming.pipeline",
+    "app.api.routes.system",
+    "app.api.routes.realtime",
+]
+disable_error_code = ["misc"]
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
+markers = ["integration: requires Postgres/Kafka (set SIEM_RUN_INTEGRATION=1)"]
 addopts = "-q --cov=app --cov-report=term-missing --cov-report=xml"
 filterwarnings = ["ignore::DeprecationWarning"]
 
@@ -85,3 +109,5 @@ omit = ["app/worker.py", "alembic/*", "app/core/logging.py"]
 
 [tool.bandit]
 exclude_dirs = ["tests", "alembic"]
+# B101: asserts are used only for type-narrowing after an `applies_to()` guard.
+skips = ["B101"]
