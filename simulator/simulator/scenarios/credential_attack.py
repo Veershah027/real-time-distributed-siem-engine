@@ -31,7 +31,7 @@ def credential_attack(*, accounts: int | None = None, source_ip: str | None = No
             )
         )
     # occasional lucky hit
-    if random.random() > 0.7:
+    if random.random() > 0.9:
         user = random.choice(targets)
         events.append(
             make_event(

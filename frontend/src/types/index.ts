@@ -1,5 +1,11 @@
 export type Severity = "critical" | "high" | "medium" | "low" | "info";
-export type AlertStatus = "open" | "acknowledged" | "resolved" | "false_positive";
+export type AlertStatus =
+  | "open"
+  | "acknowledged"
+  | "investigating"
+  | "resolved"
+  | "false_positive";
+export type DetectionKind = "rule" | "anomaly" | "ml";
 
 export interface SecurityEvent {
   event_id: string;
@@ -22,10 +28,16 @@ export interface SecurityEvent {
   metadata: Record<string, unknown>;
 }
 
+export interface AlertEvidence {
+  event_id: string;
+  timestamp: string;
+  summary: string;
+}
+
 export interface Alert {
   alert_id: string;
   rule_id: string;
-  detection_kind: "rule" | "anomaly" | "ml";
+  detection_kind: DetectionKind;
   title: string;
   description: string;
   severity: Severity;
@@ -40,11 +52,13 @@ export interface Alert {
   event_count: number;
   involved_users: string[];
   involved_hosts: string[];
-  evidence: { event_id: string; timestamp: string; summary: string }[];
+  evidence: AlertEvidence[];
   recommended_action: string;
   correlation_key: string;
   anomaly_score: number | null;
-  metadata: Record<string, unknown>;
+  metadata: Record<string, unknown> & {
+    status_history?: { from: string; to: string; at: string; by: string }[];
+  };
 }
 
 export interface Page<T> {
@@ -56,7 +70,16 @@ export interface Page<T> {
 
 export interface DashboardMetrics {
   generated_at: string;
-  events_per_second: number;
+  worker_online: boolean;
+  events_per_second: number | null;
+  events_processed_per_second: number | null;
+  pipeline_latency_ms: number | null;
+  detection_latency_ms: number | null;
+  alerts_per_minute: number | null;
+  pipeline_health_pct: number | null;
+  invalid_events_window: number | null;
+  duplicate_events_window: number | null;
+  consumer_lag: number | null;
   events_last_hour: number;
   events_last_24h: number;
   last_minute: Record<string, number>;
@@ -64,6 +87,8 @@ export interface DashboardMetrics {
   active_alerts_by_severity: Record<Severity, number>;
   critical_alerts: number;
   high_alerts: number;
+  acknowledged_alerts: number;
+  investigating_alerts: number;
   resolved_alerts: number;
   false_positive_alerts: number;
   total_alerts: number;
@@ -73,15 +98,24 @@ export interface DashboardMetrics {
 
 export interface DetectionRule {
   rule_id: string;
+  handle: string;
   name: string;
   category: string;
   default_severity: Severity;
-  kind: string;
+  kind: DetectionKind;
   enabled: boolean;
   description: string;
   parameters: Record<string, unknown>;
   mitre_attack: string[];
   recommended_action: string;
+  trigger_count: number;
+  active_count: number;
+  last_triggered: string | null;
+}
+
+export interface Component {
+  status: string;
+  [k: string]: unknown;
 }
 
 export interface SystemStatus {
@@ -92,7 +126,7 @@ export interface SystemStatus {
   generated_at: string;
   broker: Record<string, string>;
   feature_flags: Record<string, unknown>;
-  components: Record<string, Record<string, unknown>>;
+  components: Record<string, Component>;
 }
 
 export interface SimulatorStatus {
@@ -105,19 +139,72 @@ export interface SimulatorStatus {
   };
   simulator_connected: boolean;
   last_heartbeat: unknown;
-  stats: Record<string, unknown>;
+  stats: Record<string, number | string>;
+}
+
+export interface Enrichment {
+  country: string | null;
+  asn: string | null;
+  category: string | null;
+  reputation: string;
+  reputation_score: number;
+  is_private: boolean;
 }
 
 export interface TopIp {
   source_ip: string;
   event_count: number;
   auth_failures: number;
-  enrichment: {
-    country: string | null;
-    asn: string | null;
-    category: string | null;
-    reputation: string;
-    reputation_score: number;
-    is_private: boolean;
-  };
+  enrichment: Enrichment;
+}
+
+export interface AnomalyItem {
+  alert_id: string;
+  rule_id: string;
+  metric: string | null;
+  current_value: number;
+  baseline_mean: number;
+  baseline_std: number;
+  z_score: number;
+  deviation_pct: number | null;
+  severity: Severity;
+  confidence: number;
+  anomaly_score: number | null;
+  status: AlertStatus;
+  first_seen: string;
+  last_seen: string;
+  description: string;
+  source_ip: string | null;
+}
+
+export interface Baseline {
+  metric: string;
+  mean: number;
+  std: number;
+  samples: number;
+  ready: boolean;
+}
+
+export interface PerfSample {
+  events_per_second: number;
+  events_processed_per_second: number;
+  pipeline_latency_ms: number;
+  detection_latency_ms: number;
+  alerts_per_minute: number;
+  pipeline_health_pct: number;
+  invalid_events_window: number;
+  duplicate_events_window: number;
+  updated_at: number;
+}
+
+export interface TimeBucket {
+  bucket: string;
+  count: number;
+  [k: string]: string | number;
+}
+export interface SeverityBucket {
+  bucket: string;
+  severity: string;
+  count: number;
+  [k: string]: string | number;
 }

@@ -142,13 +142,13 @@ services:
     build:
       context: ./simulator
     image: siem-engine/simulator:local
-    command: ["--scenario", "${SIEM_SIMULATOR_SCENARIO:-mixed}", "--rate", "${SIEM_EVENTS_PER_SECOND:-60}", "--attack-ratio", "${SIEM_SIMULATOR_ATTACK_RATIO:-0.06}"]
+    command: ["--scenario", "${SIEM_SIMULATOR_SCENARIO:-mixed}", "--rate", "${SIEM_EVENTS_PER_SECOND:-45}", "--attack-ratio", "${SIEM_SIMULATOR_ATTACK_RATIO:-0.02}"]
     environment:
       SIEM_KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
       SIEM_KAFKA_TOPIC_EVENTS: ${SIEM_KAFKA_TOPIC_EVENTS:-siem.events.raw}
       SIEM_REDIS_URL: redis://redis:6379/0
       SIEM_SIMULATOR_AUTOSTART: "true"
-      SIEM_EVENTS_PER_SECOND: ${SIEM_EVENTS_PER_SECOND:-60}
+      SIEM_EVENTS_PER_SECOND: ${SIEM_EVENTS_PER_SECOND:-45}
     depends_on:
       redpanda:
         condition: service_healthy

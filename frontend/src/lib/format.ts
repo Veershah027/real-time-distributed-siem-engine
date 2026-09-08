@@ -14,6 +14,7 @@ export const clockTime = (iso: string): string => {
       hour: "2-digit",
       minute: "2-digit",
       second: "2-digit",
+      hour12: false,
     });
   } catch {
     return iso;
@@ -22,7 +23,7 @@ export const clockTime = (iso: string): string => {
 
 export const fullTime = (iso: string): string => {
   try {
-    return new Date(iso).toLocaleString();
+    return new Date(iso).toLocaleString([], { hour12: false });
   } catch {
     return iso;
   }
@@ -38,4 +39,25 @@ export const humanBytes = (n: number): string => {
 export const compactNum = (n: number): string =>
   Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 1 }).format(n);
 
-export const pct = (n: number): string => `${(n * 100).toFixed(1)}%`;
+export const num = (n: number): string => Intl.NumberFormat().format(n);
+
+export const pct = (n: number, digits = 1): string => `${(n * 100).toFixed(digits)}%`;
+
+/** Format a possibly-null measured metric. `dash` when unavailable. */
+export const metric = (
+  v: number | null | undefined,
+  opts: { suffix?: string; digits?: number; dash?: string } = {},
+): string => {
+  const { suffix = "", digits = 1, dash = "—" } = opts;
+  if (v === null || v === undefined || Number.isNaN(v)) return dash;
+  const rounded = Math.abs(v) >= 100 ? Math.round(v) : Number(v.toFixed(digits));
+  return `${num(rounded)}${suffix}`;
+};
+
+export const ms = (v: number | null | undefined): string =>
+  metric(v, { suffix: " ms", digits: v !== null && v !== undefined && v < 10 ? 2 : 0 });
+
+export const signedPct = (v: number | null): string => {
+  if (v === null || v === undefined) return "—";
+  return `${v >= 0 ? "+" : ""}${v.toFixed(0)}%`;
+};
