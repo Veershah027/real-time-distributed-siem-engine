@@ -78,6 +78,10 @@ def create_app() -> FastAPI:
         openapi_url="/openapi.json",
     )
 
+    # Starlette applies middleware outermost-last, so add CORS last: it must
+    # answer OPTIONS preflight before the rate limiter or router see it.
+    app.add_middleware(RateLimitMiddleware)
+    app.add_middleware(RequestContextMiddleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origin_list,
@@ -86,8 +90,6 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
         max_age=600,
     )
-    app.add_middleware(RateLimitMiddleware)
-    app.add_middleware(RequestContextMiddleware)
 
     app.include_router(api_router)
 
