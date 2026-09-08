@@ -6,7 +6,8 @@ from __future__ import annotations
 
 import pytest
 from app.schemas.event import SecurityEvent
-from tests.conftest import integration
+
+integration = pytest.mark.integration
 
 
 class TestInputHardening:

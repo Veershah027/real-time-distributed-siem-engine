@@ -11,7 +11,8 @@ from datetime import UTC, datetime, timedelta
 import fakeredis.aioredis
 import pytest
 from sqlalchemy import func, select
-from tests.conftest import integration
+
+integration = pytest.mark.integration
 
 pytestmark = integration
 

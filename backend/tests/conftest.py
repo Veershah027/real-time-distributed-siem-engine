@@ -17,9 +17,23 @@ from app.schemas.event import SecurityEvent
 
 RUN_INTEGRATION = os.environ.get("SIEM_RUN_INTEGRATION") == "1"
 
-integration = pytest.mark.skipif(
-    not RUN_INTEGRATION, reason="integration test — set SIEM_RUN_INTEGRATION=1"
-)
+#: Apply to a test/class that needs Postgres/Kafka. Also auto-skipped by the
+#: ``pytest_collection_modifyitems`` hook below when SIEM_RUN_INTEGRATION != 1,
+#: so a bare ``@pytest.mark.integration`` works without importing this symbol.
+integration = pytest.mark.integration
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    config.addinivalue_line("markers", "integration: requires Postgres/Kafka")
+
+
+def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
+    if RUN_INTEGRATION:
+        return
+    skip = pytest.mark.skip(reason="integration test — set SIEM_RUN_INTEGRATION=1")
+    for item in items:
+        if "integration" in item.keywords:
+            item.add_marker(skip)
 
 
 @pytest.fixture(autouse=True)

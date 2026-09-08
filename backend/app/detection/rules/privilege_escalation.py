@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from app.detection.base import Detection, Detector, DetectorContext
-from app.schemas.enums import DetectionKind, EventType, Severity
+from app.schemas.enums import DetectionKind, EventType, Severity, SourceType
 from app.schemas.event import SecurityEvent
 
 _SUSPICIOUS_ACTIONS = (
@@ -37,11 +37,17 @@ class PrivilegeEscalationDetector(Detector):
     default_params = {"privileged_roles": ["admin", "root", "sudo", "administrator"]}
 
     def applies_to(self, event: SecurityEvent) -> bool:
-        return event.event_type in {
-            EventType.PRIVILEGE_ESCALATION,
-            EventType.CONFIG_CHANGE,
-            EventType.APP_EVENT,
-        } or bool(event.action and any(s in event.action.lower() for s in _SUSPICIOUS_ACTIONS))
+        if event.event_type in {EventType.PRIVILEGE_ESCALATION, EventType.CONFIG_CHANGE}:
+            return True
+        # host-command style events only: must carry an actor and run on a
+        # server/identity source (not a web request whose path happens to
+        # contain a keyword like "passwd").
+        if event.source_type in {SourceType.WEB_SERVER, SourceType.FIREWALL, SourceType.DNS}:
+            return False
+        if not event.username:
+            return False
+        haystack = f"{event.action or ''} {event.message or ''}".lower()
+        return any(s in haystack for s in _SUSPICIOUS_ACTIONS)
 
     async def evaluate(self, event: SecurityEvent, ctx: DetectorContext) -> Detection | None:
         action = (event.action or event.message or "").lower()

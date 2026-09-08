@@ -11,7 +11,8 @@ from datetime import UTC, datetime
 
 import pytest
 from httpx import ASGITransport, AsyncClient
-from tests.conftest import integration
+
+integration = pytest.mark.integration
 
 pytestmark = integration
 
