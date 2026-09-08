@@ -337,6 +337,13 @@ from functionality that is implemented and covered by tests.
   Bandit/pip-audit, a coverage-gated pytest suite, and an end-to-end compose
   smoke test.
 
+## Acknowledgements
+
+Designed and built by **Veer Shah**. An AI assistant (Claude) was used the way a
+senior colleague would be — to talk through design trade-offs, look things up,
+and help track down specific bugs during development. All architecture,
+implementation decisions, and the final code are my own.
+
 ## License
 
 MIT — © 2026 Veer Shah. See [`LICENSE`](LICENSE).
