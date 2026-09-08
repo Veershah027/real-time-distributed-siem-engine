@@ -52,6 +52,11 @@ class AlertCorrelator:
                 correlation_key=detection.correlation_key,
                 anomaly_score=detection.anomaly_score,
                 alert_metadata=detection.metadata,
+                # set explicitly so the just-flushed object is fully populated
+                # without a refresh round trip (server_default would otherwise
+                # leave these unloaded for the in-memory instance)
+                created_at=now,
+                updated_at=now,
             )
             await self.repo.add(alert)
             log.info(

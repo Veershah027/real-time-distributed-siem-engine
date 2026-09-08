@@ -20,7 +20,9 @@ class AlertEvidence(BaseModel):
 
 
 class AlertRead(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+    # populate_by_name lets the API field stay `metadata` while reading the ORM
+    # attribute `alert_metadata` (the ORM's own `.metadata` is SQLAlchemy's).
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
     alert_id: uuid.UUID
     rule_id: str
@@ -43,7 +45,7 @@ class AlertRead(BaseModel):
     recommended_action: str
     correlation_key: str
     anomaly_score: float | None = None
-    metadata: dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict, validation_alias="alert_metadata")
 
 
 class AlertUpdate(BaseModel):

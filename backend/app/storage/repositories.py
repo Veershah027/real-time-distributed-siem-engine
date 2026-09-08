@@ -50,7 +50,7 @@ class EventRepository:
             "message": ev.message,
             "bytes_out": ev.bytes_out,
             "bytes_in": ev.bytes_in,
-            "metadata": ev.metadata,
+            "event_metadata": ev.metadata,
         }
 
     async def bulk_insert(self, events: list[SecurityEvent]) -> int:

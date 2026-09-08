@@ -22,6 +22,19 @@ integration = pytest.mark.skipif(
 )
 
 
+@pytest.fixture(autouse=True)
+async def _reset_global_pools():
+    """pytest-asyncio gives each test its own event loop; the module-level async
+    engine / redis pool are bound to whichever loop created them. Dispose after
+    every test so the next test rebuilds them on its own loop."""
+    yield
+    from app.storage.db import dispose_engine
+    from app.storage.redis_client import close_redis
+
+    await dispose_engine()
+    await close_redis()
+
+
 @pytest.fixture
 async def redis_client():
     client = fakeredis.aioredis.FakeRedis(decode_responses=True)

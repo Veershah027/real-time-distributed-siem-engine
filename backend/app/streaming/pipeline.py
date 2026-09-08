@@ -117,6 +117,9 @@ class Pipeline:
             for _event, detection in all_detections:
                 alert, created = await correlator.apply(detection)
                 await session.flush()
+                # make server-side defaults (created_at/updated_at) concrete
+                # before we serialise outside the async session context
+                await session.refresh(alert)
                 if created:
                     ALERTS_CREATED.labels(rule_id=alert.rule_id, severity=alert.severity).inc()
                 else:
@@ -266,6 +269,7 @@ class Pipeline:
             correlator = AlertCorrelator(AlertRepository(session))
             alert, created = await correlator.apply(detection)
             await session.flush()
+            await session.refresh(alert)
             if created:
                 ALERTS_CREATED.labels(rule_id=alert.rule_id, severity=alert.severity).inc()
             payload = AlertRead.model_validate(alert)
