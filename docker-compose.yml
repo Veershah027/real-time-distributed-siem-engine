@@ -119,6 +119,14 @@ services:
       <<: *backend-env
     ports:
       - "127.0.0.1:9109:9109"   # worker Prometheus metrics (pipeline counters)
+    # the image's default healthcheck probes :8000 (the API); the worker only
+    # serves metrics, so probe that instead
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:9109/metrics',timeout=4).status==200 else 1)"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
     depends_on:
       backend:
         condition: service_started
