@@ -15,7 +15,6 @@ from datetime import UTC, datetime, timedelta
 import orjson
 import redis.asyncio as redis
 
-from app.core.config import settings
 from app.core.logging import get_logger
 from app.core.metrics import (
     ALERTS_CORRELATED,
@@ -72,7 +71,7 @@ class Pipeline:
             EVENTS_INGESTED.inc()
             try:
                 event = SecurityEvent.from_raw(raw)
-            except Exception as exc:  # noqa: BLE001 - malformed producer data
+            except Exception as exc:
                 EVENTS_INVALID.labels(reason="validation").inc()
                 log.warning("event_rejected", error=str(exc))
                 continue
@@ -119,9 +118,7 @@ class Pipeline:
                 alert, created = await correlator.apply(detection)
                 await session.flush()
                 if created:
-                    ALERTS_CREATED.labels(
-                        rule_id=alert.rule_id, severity=alert.severity
-                    ).inc()
+                    ALERTS_CREATED.labels(rule_id=alert.rule_id, severity=alert.severity).inc()
                 else:
                     ALERTS_CORRELATED.labels(rule_id=alert.rule_id).inc()
                 alert_payloads.append(AlertRead.model_validate(alert))
@@ -129,9 +126,7 @@ class Pipeline:
         # --- publish to real-time subscribers ---
         await self._publish_events(fresh)
         for payload in alert_payloads:
-            await self.redis.publish(
-                CHANNEL_ALERTS, payload.model_dump_json()
-            )
+            await self.redis.publish(CHANNEL_ALERTS, payload.model_dump_json())
 
         # --- rolling metrics + anomaly feed ---
         await self._update_metrics(fresh, all_detections)
@@ -149,9 +144,7 @@ class Pipeline:
             )
         await pipe.execute()
 
-    async def _update_metrics(
-        self, events: list[SecurityEvent], detections: list
-    ) -> None:
+    async def _update_metrics(self, events: list[SecurityEvent], detections: list) -> None:
         now_minute = self._current_minute()
         self._window_events += len(events)
 
@@ -197,9 +190,10 @@ class Pipeline:
             "db_errors_per_min": float(c["db_errors"]),
             "firewall_denies_per_min": float(c["firewall_denies"]),
         }
-        await self.redis.hset("siem:metrics:last_minute", mapping={
-            k: str(v) for k, v in features.items()
-        } | {"minute": minute.isoformat()})
+        await self.redis.hset(
+            "siem:metrics:last_minute",
+            mapping={k: str(v) for k, v in features.items()} | {"minute": minute.isoformat()},
+        )
         await self.redis.expire("siem:metrics:last_minute", 300)
 
         anomalies = []
@@ -273,9 +267,7 @@ class Pipeline:
             alert, created = await correlator.apply(detection)
             await session.flush()
             if created:
-                ALERTS_CREATED.labels(
-                    rule_id=alert.rule_id, severity=alert.severity
-                ).inc()
+                ALERTS_CREATED.labels(rule_id=alert.rule_id, severity=alert.severity).inc()
             payload = AlertRead.model_validate(alert)
         await self.redis.publish(CHANNEL_ALERTS, payload.model_dump_json())
 

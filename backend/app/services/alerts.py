@@ -67,5 +67,7 @@ async def update_alert_status(
         note=note,
     )
     await session.commit()
-    log.info("alert_status_changed", alert_id=str(alert_id), **{"from": current, "to": new_status.value})
+    log.info(
+        "alert_status_changed", alert_id=str(alert_id), **{"from": current, "to": new_status.value}
+    )
     return alert

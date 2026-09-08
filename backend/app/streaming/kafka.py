@@ -129,7 +129,9 @@ class EventConsumer:
             raise RuntimeError("consumer not started")
         while not self._stopping.is_set():
             try:
-                result = await self._consumer.getmany(timeout_ms=1000, max_records=settings.consumer_batch_max)
+                result = await self._consumer.getmany(
+                    timeout_ms=1000, max_records=settings.consumer_batch_max
+                )
             except KafkaConnectionError as exc:
                 log.warning("consumer_connection_error", error=str(exc))
                 await asyncio.sleep(1)

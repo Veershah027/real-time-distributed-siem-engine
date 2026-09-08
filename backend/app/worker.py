@@ -30,10 +30,8 @@ async def _gauge_refresher(pipeline: Pipeline, stop: asyncio.Event) -> None:
         with contextlib.suppress(Exception):
             await pipeline.redis.set("siem:worker:heartbeat", str(time.time()), ex=30)
             await pipeline.refresh_active_alert_gauge()
-        try:
+        with contextlib.suppress(TimeoutError):
             await asyncio.wait_for(stop.wait(), timeout=10)
-        except TimeoutError:
-            pass
 
 
 async def run() -> None:
@@ -68,7 +66,7 @@ async def run() -> None:
                 consumed += len(batch)
                 if consumed % 5000 < len(batch):
                     log.info("worker_progress", events_consumed=consumed)
-            except Exception as exc:  # noqa: BLE001 - keep the loop alive
+            except Exception as exc:
                 log.error("batch_failed", error=str(exc), batch_size=len(batch))
                 await asyncio.sleep(1)
     finally:
@@ -84,10 +82,8 @@ async def run() -> None:
 
 
 def main() -> None:
-    try:
+    with contextlib.suppress(KeyboardInterrupt):  # pragma: no cover
         asyncio.run(run())
-    except KeyboardInterrupt:  # pragma: no cover
-        pass
 
 
 if __name__ == "__main__":

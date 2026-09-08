@@ -8,6 +8,7 @@ distributed and lets the dashboard drive demos.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import time
 from typing import Any
@@ -48,14 +49,14 @@ async def get_state(client: redis.Redis) -> dict[str, Any]:
     raw = await client.get(CONTROL_KEY)
     state = _default_state()
     if raw:
-        try:
+        with contextlib.suppress(json.JSONDecodeError):
             state.update(json.loads(raw))
-        except json.JSONDecodeError:
-            pass
     return state
 
 
-async def set_state(client: redis.Redis, patch: dict[str, Any], *, actor: str = "api") -> dict[str, Any]:
+async def set_state(
+    client: redis.Redis, patch: dict[str, Any], *, actor: str = "api"
+) -> dict[str, Any]:
     state = await get_state(client)
     if "scenario" in patch and patch["scenario"] not in SCENARIOS:
         raise ValueError(f"unknown scenario: {patch['scenario']}")
@@ -74,9 +75,9 @@ async def get_status(client: redis.Redis) -> dict[str, Any]:
     state = await get_state(client)
     hb_raw = await client.get(HEARTBEAT_KEY)
     stats_raw = await client.get(STATS_KEY)
-    heartbeat = json.loads(hb_raw) if hb_raw else None
+    heartbeat: dict[str, Any] | None = json.loads(hb_raw) if hb_raw else None
     stats = json.loads(stats_raw) if stats_raw else {}
-    connected = bool(heartbeat) and (time.time() - heartbeat.get("ts", 0) < 15)
+    connected = heartbeat is not None and (time.time() - heartbeat.get("ts", 0) < 15)
     return {
         "desired": state,
         "simulator_connected": connected,
