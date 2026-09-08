@@ -34,9 +34,7 @@ class DataExfiltrationDetector(Detector):
     def applies_to(self, event: SecurityEvent) -> bool:
         return event.event_type in _FLOW_EVENTS and event.bytes_out > 0 and bool(event.source_ip)
 
-    async def evaluate(
-        self, event: SecurityEvent, ctx: DetectorContext
-    ) -> Detection | None:
+    async def evaluate(self, event: SecurityEvent, ctx: DetectorContext) -> Detection | None:
         assert event.source_ip is not None
         window = int(ctx.params["window_seconds"])
         threshold = int(ctx.params["bytes_threshold"])

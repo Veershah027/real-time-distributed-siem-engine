@@ -26,9 +26,7 @@ class PasswordSprayDetector(Detector):
             event.source_ip and event.username
         )
 
-    async def evaluate(
-        self, event: SecurityEvent, ctx: DetectorContext
-    ) -> Detection | None:
+    async def evaluate(self, event: SecurityEvent, ctx: DetectorContext) -> Detection | None:
         assert event.source_ip is not None
         window = int(ctx.params["window_seconds"])
         threshold = int(ctx.params["unique_users"])

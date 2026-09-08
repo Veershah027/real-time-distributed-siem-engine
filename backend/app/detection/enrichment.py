@@ -41,6 +41,22 @@ class EnrichmentProvider(Protocol):
     async def enrich(self, ip: str) -> Enrichment: ...
 
 
+# TEST-NET documentation ranges are what the simulator uses to stand in for
+# "the internet". Newer Python classifies them as ``is_private``; we treat them
+# as external so the Threat Intel view enriches them like real public IPs.
+_DOC_NETS = [
+    ipaddress.ip_network("192.0.2.0/24"),
+    ipaddress.ip_network("198.51.100.0/24"),
+    ipaddress.ip_network("203.0.113.0/24"),
+]
+
+
+def _is_external(addr: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
+    if any(addr in n for n in _DOC_NETS):
+        return True
+    return not (addr.is_private or addr.is_loopback or addr.is_link_local)
+
+
 class SyntheticEnrichmentProvider:
     name = "synthetic"
 
@@ -50,7 +66,7 @@ class SyntheticEnrichmentProvider:
         except ValueError:
             return Enrichment(ip, False, None, None, None, "neutral", 40, self.name)
 
-        if addr.is_private or addr.is_loopback or addr.is_link_local:
+        if not _is_external(addr):
             return Enrichment(
                 ip=ip,
                 is_private=True,
@@ -70,10 +86,13 @@ class SyntheticEnrichmentProvider:
         if category in {"tor-exit", "scanner"}:
             score = max(score, 70)
         reputation = (
-            "malicious" if score >= 80 else
-            "suspicious" if score >= 55 else
-            "neutral" if score >= 25 else
-            "clean"
+            "malicious"
+            if score >= 80
+            else "suspicious"
+            if score >= 55
+            else "neutral"
+            if score >= 25
+            else "clean"
         )
         return Enrichment(
             ip=ip,

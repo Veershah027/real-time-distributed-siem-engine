@@ -47,7 +47,7 @@ def _resolve_params(detector: Detector) -> dict:
 class DetectionEngine:
     def __init__(self, redis_client: redis.Redis) -> None:
         self._windows = WindowStore(redis_client)
-        self._detectors: list[Detector] = [cls() for cls in RULE_DETECTORS]
+        self._detectors: list[Detector] = [cls() for cls in RULE_DETECTORS]  # type: ignore[abstract]
         self._params = {d.rule_id: _resolve_params(d) for d in self._detectors}
         self._disabled: set[str] = set()
 
@@ -80,9 +80,7 @@ class DetectionEngine:
             try:
                 if not detector.applies_to(event):
                     continue
-                ctx = DetectorContext(
-                    windows=self._windows, params=self._params[detector.rule_id]
-                )
+                ctx = DetectorContext(windows=self._windows, params=self._params[detector.rule_id])
                 result = await detector.evaluate(event, ctx)
                 if result is not None:
                     result.triggered_at = datetime.now(UTC)

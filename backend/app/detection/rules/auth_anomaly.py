@@ -34,9 +34,7 @@ class AuthAnomalyDetector(Detector):
             and bool(event.source_ip)
         )
 
-    async def evaluate(
-        self, event: SecurityEvent, ctx: DetectorContext
-    ) -> Detection | None:
+    async def evaluate(self, event: SecurityEvent, ctx: DetectorContext) -> Detection | None:
         assert event.username and event.source_ip
         window = int(ctx.params["window_seconds"])
         threshold = int(ctx.params["distinct_ips"])
@@ -63,7 +61,9 @@ class AuthAnomalyDetector(Detector):
                 f"source IPs within {res.span_seconds:.0f}s. Latest attempt "
                 f"{'succeeded' if succeeded else 'failed'} from {event.source_ip}."
             ),
-            severity=Severity.HIGH if succeeded and distinct_ips >= threshold + 2 else self.default_severity,
+            severity=Severity.HIGH
+            if succeeded and distinct_ips >= threshold + 2
+            else self.default_severity,
             confidence=round(confidence, 2),
             correlation_key=f"user:{event.username.lower()}:authgeo",
             source_ip=event.source_ip,

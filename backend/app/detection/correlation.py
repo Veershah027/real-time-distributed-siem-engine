@@ -29,9 +29,7 @@ class AlertCorrelator:
     async def apply(self, detection: Detection) -> tuple[Alert, bool]:
         """Returns (alert, created)."""
         now = detection.triggered_at or datetime.now(UTC)
-        existing = await self.repo.get_open_by_key(
-            detection.rule_id, detection.correlation_key
-        )
+        existing = await self.repo.get_open_by_key(detection.rule_id, detection.correlation_key)
 
         if existing is None:
             alert = Alert(
@@ -67,9 +65,7 @@ class AlertCorrelator:
 
         # --- fold into the existing alert ---
         existing.last_seen = now
-        existing.event_count = max(
-            existing.event_count + 1, detection.event_count_hint
-        )
+        existing.event_count = max(existing.event_count + 1, detection.event_count_hint)
         existing.confidence = max(existing.confidence, detection.confidence)
         if Severity(detection.severity).rank > Severity(existing.severity).rank:
             existing.severity = detection.severity.value
@@ -80,7 +76,7 @@ class AlertCorrelator:
             set(existing.involved_users) | set(detection.involved_users)
         )[:_MAX_INVOLVED]
         existing.involved_hosts = sorted(
-            set(existing.involved_hosts) | set(h for h in detection.involved_hosts if h)
+            set(existing.involved_hosts) | {h for h in detection.involved_hosts if h}
         )[:_MAX_INVOLVED]
 
         evidence = list(existing.evidence)
@@ -93,9 +89,7 @@ class AlertCorrelator:
         merged_meta.update(detection.metadata)
         existing.alert_metadata = merged_meta
         if detection.anomaly_score is not None:
-            existing.anomaly_score = max(
-                existing.anomaly_score or 0.0, detection.anomaly_score
-            )
+            existing.anomaly_score = max(existing.anomaly_score or 0.0, detection.anomaly_score)
 
         log.debug(
             "alert_correlated",

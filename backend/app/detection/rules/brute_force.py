@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from app.detection.base import Detection, Detector, DetectorContext
-from app.schemas.enums import DetectionKind, EventStatus, EventType, Severity
+from app.schemas.enums import DetectionKind, EventType, Severity
 from app.schemas.event import SecurityEvent
 
 
@@ -27,9 +27,7 @@ class BruteForceDetector(Detector):
             or (event.event_type == EventType.AUTH_SUCCESS and event.source_ip is not None)
         ) and event.source_ip is not None
 
-    async def evaluate(
-        self, event: SecurityEvent, ctx: DetectorContext
-    ) -> Detection | None:
+    async def evaluate(self, event: SecurityEvent, ctx: DetectorContext) -> Detection | None:
         assert event.source_ip is not None
         window = int(ctx.params["window_seconds"])
         threshold = int(ctx.params["max_failures"])
@@ -37,9 +35,7 @@ class BruteForceDetector(Detector):
         if event.event_type == EventType.AUTH_SUCCESS:
             # A success from an IP mid-spree raises confidence but does not by
             # itself trigger; measure without adding.
-            res = await ctx.windows.measure(
-                "bruteforce", event.source_ip, window_seconds=window
-            )
+            res = await ctx.windows.measure("bruteforce", event.source_ip, window_seconds=window)
             if res.count < threshold:
                 return None
             breached_account = True

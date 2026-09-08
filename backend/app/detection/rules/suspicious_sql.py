@@ -19,8 +19,14 @@ _PATTERNS: list[tuple[str, str, float]] = [
     (r"(?i)';\s*(drop|delete|update|insert)\b", "stacked-query injection", 0.9),
     (r"(?i)\b(information_schema|pg_catalog|sysobjects)\b", "schema enumeration", 0.6),
     (r"(?i)\b(load_file|into\s+outfile|pg_read_file|xp_cmdshell)\b", "file / command access", 0.95),
-    (r"(?i)\bselect\b.{0,40}\bfrom\b.{0,40}\b(users|credentials|customers|payment)\b.*", "bulk read of sensitive table", 0.5),
-    (r"(?i)--\s*$", "inline comment truncation", 0.4),
+    (
+        # unparameterised bulk read of a sensitive table (SELECT * ... no placeholder)
+        r"(?i)\bselect\s+\*\s+from\s+\w*\b(users|credentials|customers|payment|passwords?)\b"
+        r"(?!.*[$:?]\d?)",
+        "unparameterised bulk read of a sensitive table",
+        0.5,
+    ),
+    (r"(?i)(['\"]\s*)--\s*$", "inline comment truncation of a string literal", 0.55),
     (r"(?i)\bsleep\s*\(\s*\d+\s*\)|\bwaitfor\s+delay\b", "time-based blind injection", 0.85),
 ]
 _COMPILED = [(re.compile(p), label, w) for p, label, w in _PATTERNS]
@@ -44,9 +50,7 @@ class SuspiciousSQLDetector(Detector):
     def applies_to(self, event: SecurityEvent) -> bool:
         return event.event_type in {EventType.DB_QUERY, EventType.DB_ERROR}
 
-    async def evaluate(
-        self, event: SecurityEvent, ctx: DetectorContext
-    ) -> Detection | None:
+    async def evaluate(self, event: SecurityEvent, ctx: DetectorContext) -> Detection | None:
         query = str(event.metadata.get("query") or event.message or "")
         if not query:
             return None

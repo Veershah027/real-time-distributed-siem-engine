@@ -48,9 +48,7 @@ class StatisticalAnomalyDetector:
         self.z_threshold = (
             z_threshold if z_threshold is not None else settings.anomaly_zscore_threshold
         )
-        self.min_samples = (
-            min_samples if min_samples is not None else settings.anomaly_min_samples
-        )
+        self.min_samples = min_samples if min_samples is not None else settings.anomaly_min_samples
 
     def _key(self, metric: str) -> str:
         return f"siem:anomaly:{metric}"

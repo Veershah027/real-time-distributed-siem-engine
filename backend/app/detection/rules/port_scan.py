@@ -34,9 +34,7 @@ class PortScanDetector(Detector):
             and event.destination_port is not None
         )
 
-    async def evaluate(
-        self, event: SecurityEvent, ctx: DetectorContext
-    ) -> Detection | None:
+    async def evaluate(self, event: SecurityEvent, ctx: DetectorContext) -> Detection | None:
         assert event.source_ip is not None and event.destination_port is not None
         window = int(ctx.params["window_seconds"])
         threshold = int(ctx.params["unique_ports"])

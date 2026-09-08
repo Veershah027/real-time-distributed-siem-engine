@@ -67,9 +67,7 @@ class Detector(abc.ABC):
         return True
 
     @abc.abstractmethod
-    async def evaluate(
-        self, event: SecurityEvent, ctx: DetectorContext
-    ) -> Detection | None: ...
+    async def evaluate(self, event: SecurityEvent, ctx: DetectorContext) -> Detection | None: ...
 
     def catalogue_entry(self) -> dict[str, Any]:
         return {

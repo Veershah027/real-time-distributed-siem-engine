@@ -9,6 +9,7 @@ a rolling buffer of recent per-minute feature vectors and flags outliers. It is
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 from app.core.config import settings
 from app.core.logging import get_logger
@@ -41,7 +42,7 @@ class IsolationForestDetector:
         self.contamination = contamination
         self.buffer_size = buffer_size
         self._buffer: list[list[float]] = []
-        self._model = None
+        self._model: Any = None
         self._trained = False
         if self.enabled:
             try:
@@ -68,18 +69,19 @@ class IsolationForestDetector:
             from sklearn.ensemble import IsolationForest
 
             # Retrain periodically on the rolling buffer (cheap at this scale).
-            if not self._trained or len(self._buffer) % 30 == 0:
-                self._model = IsolationForest(
+            if self._model is None or len(self._buffer) % 30 == 0:
+                model = IsolationForest(
                     contamination=self.contamination,
                     n_estimators=100,
                     random_state=42,
                 )
-                self._model.fit(self._buffer[:-1])
+                model.fit(self._buffer[:-1])
+                self._model = model
                 self._trained = True
 
-            assert self._model is not None
-            raw = float(self._model.decision_function([vec])[0])
-            pred = int(self._model.predict([vec])[0])
+            model = self._model
+            raw = float(model.decision_function([vec])[0])
+            pred = int(model.predict([vec])[0])
             score = max(0.0, min(1.0, 0.5 - raw))
             if pred == -1:
                 top = sorted(feats.items(), key=lambda kv: -kv[1])[:3]
@@ -89,8 +91,7 @@ class IsolationForestDetector:
                     features=feats,
                     reason=(
                         "Isolation Forest flagged this minute as an outlier; "
-                        "largest contributors: "
-                        + ", ".join(f"{k}={v:.1f}" for k, v in top)
+                        "largest contributors: " + ", ".join(f"{k}={v:.1f}" for k, v in top)
                     ),
                 )
         except Exception as exc:  # pragma: no cover - defensive

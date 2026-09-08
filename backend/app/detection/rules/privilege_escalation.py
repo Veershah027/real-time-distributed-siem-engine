@@ -43,9 +43,7 @@ class PrivilegeEscalationDetector(Detector):
             EventType.APP_EVENT,
         } or bool(event.action and any(s in event.action.lower() for s in _SUSPICIOUS_ACTIONS))
 
-    async def evaluate(
-        self, event: SecurityEvent, ctx: DetectorContext
-    ) -> Detection | None:
+    async def evaluate(self, event: SecurityEvent, ctx: DetectorContext) -> Detection | None:
         action = (event.action or event.message or "").lower()
         is_priv_action = event.event_type == EventType.PRIVILEGE_ESCALATION or any(
             s in action for s in _SUSPICIOUS_ACTIONS
