@@ -59,7 +59,7 @@ export function Dashboard() {
   }, [series.data]);
 
   const sevDistribution = useMemo(() => {
-    const src = m?.active_alerts_by_severity ?? {};
+    const src: Partial<Record<string, number>> = m?.active_alerts_by_severity ?? {};
     return SEV_ORDER.map((s) => ({
       name: s,
       value: src[s] ?? 0,

@@ -1,5 +1,6 @@
+import type { ReactNode } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import type { Alert, AlertStatus } from "@/types";
+import type { AlertStatus } from "@/types";
 import { api } from "@/services/api";
 import { fullTime, relTime, pct } from "@/lib/format";
 import { SeverityBadge, StatusPill, Loading } from "./primitives";
@@ -149,7 +150,7 @@ export function AlertDetail({ alertId, onClose }: { alertId: string; onClose: ()
   );
 }
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
+function SectionLabel({ children }: { children: ReactNode }) {
   return (
     <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
       {children}

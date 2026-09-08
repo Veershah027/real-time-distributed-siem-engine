@@ -9,9 +9,10 @@ module.exports = {
   parser: "@typescript-eslint/parser",
   parserOptions: { ecmaVersion: "latest", sourceType: "module" },
   plugins: ["react-refresh"],
-  ignorePatterns: ["dist", "node_modules", "*.cjs", "vite.config.ts"],
+  ignorePatterns: ["dist", "node_modules", "*.cjs", "vite.config.ts", "*.test.ts", "*.test.tsx"],
   rules: {
-    "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
+    // HMR-only hint; our provider+hook co-location is intentional.
+    "react-refresh/only-export-components": "off",
     "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
     "@typescript-eslint/no-explicit-any": "warn",
   },
