@@ -2,6 +2,8 @@ from fastapi import APIRouter
 
 from app.api.routes import (
     alerts,
+    analytics,
+    anomalies,
     auth,
     detections,
     events,
@@ -20,6 +22,8 @@ api_router.include_router(alerts.router, prefix="/api/alerts", tags=["alerts"])
 api_router.include_router(metrics.router, prefix="/api", tags=["metrics"])
 api_router.include_router(threats.router, prefix="/api/threats", tags=["threats"])
 api_router.include_router(detections.router, prefix="/api/detections", tags=["detections"])
+api_router.include_router(anomalies.router, prefix="/api/anomalies", tags=["anomalies"])
+api_router.include_router(analytics.router, prefix="/api/analytics", tags=["analytics"])
 api_router.include_router(system.router, prefix="/api/system", tags=["system"])
 api_router.include_router(simulator.router, prefix="/api/simulator", tags=["simulator"])
 api_router.include_router(auth.router, prefix="/api/auth", tags=["auth"])

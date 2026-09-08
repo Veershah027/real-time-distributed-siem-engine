@@ -9,7 +9,7 @@ from fastapi import APIRouter, HTTPException, Query
 
 from app.api.deps import DBSession
 from app.detection.enrichment import get_enrichment_provider
-from app.storage.repositories import EventRepository
+from app.storage.repositories import AlertRepository, EventRepository
 
 router = APIRouter()
 
@@ -36,6 +36,18 @@ async def event_types(session: DBSession, minutes: int = Query(60, ge=5, le=1440
     since = datetime.now(UTC) - timedelta(minutes=minutes)
     breakdown = await EventRepository(session).event_type_breakdown(since)
     return {"window_minutes": minutes, "items": breakdown}
+
+
+@router.get("/top-hosts")
+async def top_hosts(
+    session: DBSession,
+    minutes: int = Query(60, ge=5, le=1440),
+    limit: int = Query(10, ge=1, le=50),
+) -> dict:
+    since = datetime.now(UTC) - timedelta(minutes=minutes)
+    sources = await EventRepository(session).top_hosts(since, limit)
+    attacked = await AlertRepository(session).affected_hosts(since, limit)
+    return {"window_minutes": minutes, "top_event_sources": sources, "top_attacked_hosts": attacked}
 
 
 @router.get("/enrich/{ip}")

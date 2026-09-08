@@ -66,8 +66,18 @@ class EventStatus(StrEnum):
 class AlertStatus(StrEnum):
     OPEN = "open"
     ACKNOWLEDGED = "acknowledged"
+    INVESTIGATING = "investigating"
     RESOLVED = "resolved"
     FALSE_POSITIVE = "false_positive"
+
+    @property
+    def is_active(self) -> bool:
+        """Non-terminal states — the alert is still being worked."""
+        return self in {
+            AlertStatus.OPEN,
+            AlertStatus.ACKNOWLEDGED,
+            AlertStatus.INVESTIGATING,
+        }
 
 
 class DetectionKind(StrEnum):

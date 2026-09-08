@@ -14,9 +14,27 @@ from app.storage.repositories import AlertRepository, AuditRepository
 
 log = get_logger("services.alerts")
 
+# Incident workflow: OPEN -> ACKNOWLEDGED -> INVESTIGATING -> RESOLVED,
+# with FALSE_POSITIVE reachable from any active state and re-open from terminal.
 _ALLOWED_TRANSITIONS: dict[str, set[str]] = {
-    AlertStatus.OPEN: {AlertStatus.ACKNOWLEDGED, AlertStatus.RESOLVED, AlertStatus.FALSE_POSITIVE},
-    AlertStatus.ACKNOWLEDGED: {AlertStatus.RESOLVED, AlertStatus.FALSE_POSITIVE, AlertStatus.OPEN},
+    AlertStatus.OPEN: {
+        AlertStatus.ACKNOWLEDGED,
+        AlertStatus.INVESTIGATING,
+        AlertStatus.RESOLVED,
+        AlertStatus.FALSE_POSITIVE,
+    },
+    AlertStatus.ACKNOWLEDGED: {
+        AlertStatus.INVESTIGATING,
+        AlertStatus.RESOLVED,
+        AlertStatus.FALSE_POSITIVE,
+        AlertStatus.OPEN,
+    },
+    AlertStatus.INVESTIGATING: {
+        AlertStatus.ACKNOWLEDGED,
+        AlertStatus.RESOLVED,
+        AlertStatus.FALSE_POSITIVE,
+        AlertStatus.OPEN,
+    },
     AlertStatus.RESOLVED: {AlertStatus.OPEN},
     AlertStatus.FALSE_POSITIVE: {AlertStatus.OPEN},
 }

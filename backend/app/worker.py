@@ -26,13 +26,22 @@ from app.streaming.pipeline import Pipeline
 log = get_logger("worker")
 
 
-async def _gauge_refresher(pipeline: Pipeline, stop: asyncio.Event) -> None:
+async def _gauge_refresher(
+    pipeline: Pipeline, consumer: EventConsumer, stop: asyncio.Event
+) -> None:
     import time
 
     while not stop.is_set():
         with contextlib.suppress(Exception):
             await pipeline.redis.set("siem:worker:heartbeat", str(time.time()), ex=30)
             await pipeline.refresh_active_alert_gauge()
+            lag = await consumer.lag()
+            if lag is not None:
+                await pipeline.redis.hset(
+                    "siem:metrics:consumer_lag",
+                    mapping={"lag": str(lag), "updated_at": str(time.time())},
+                )
+                await pipeline.redis.expire("siem:metrics:consumer_lag", 60)
         with contextlib.suppress(TimeoutError):
             await asyncio.wait_for(stop.wait(), timeout=10)
 
@@ -62,7 +71,7 @@ async def run() -> None:
         group=settings.kafka_consumer_group,
     )
     await consumer.start()
-    refresher = asyncio.create_task(_gauge_refresher(pipeline, stop))
+    refresher = asyncio.create_task(_gauge_refresher(pipeline, consumer, stop))
 
     consumed = 0
     try:

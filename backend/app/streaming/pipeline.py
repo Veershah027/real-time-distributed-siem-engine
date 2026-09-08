@@ -53,8 +53,11 @@ class Pipeline:
         self._minute_bucket = self._current_minute()
         self._minute_counter: Counter[str] = Counter()
         self._minute_ips: set[str] = set()
-        self._window_events = 0
         self._window_started = time.monotonic()
+        # rolling ~5s window accumulators for the /api/metrics + Performance page
+        self._w: Counter[str] = Counter()
+        self._w_batch_secs = 0.0
+        self._w_detect_secs = 0.0
 
     @staticmethod
     def _current_minute() -> datetime:
@@ -69,10 +72,12 @@ class Pipeline:
         # --- validate + normalize + dedupe ---
         for raw in raw_events:
             EVENTS_INGESTED.inc()
+            self._w["ingested"] += 1
             try:
                 event = SecurityEvent.from_raw(raw)
             except Exception as exc:
                 EVENTS_INVALID.labels(reason="validation").inc()
+                self._w["invalid"] += 1
                 log.warning("event_rejected", error=str(exc))
                 continue
             valid.append(event)
@@ -89,6 +94,7 @@ class Pipeline:
         dupes = len(valid) - len(fresh)
         if dupes:
             EVENTS_DUPLICATE.inc(dupes)
+            self._w["duplicate"] += dupes
         if not fresh:
             return
 
@@ -98,11 +104,13 @@ class Pipeline:
         await pipe.execute()
 
         # --- detect ---
+        detect_started = time.perf_counter()
         all_detections = []
         for event in fresh:
             detections = await self.engine.evaluate(event)
             for d in detections:
                 all_detections.append((event, d))
+        self._w_detect_secs += time.perf_counter() - detect_started
 
         # --- persist events + alerts in one transaction ---
         alert_payloads: list[AlertRead] = []
@@ -113,6 +121,7 @@ class Pipeline:
 
             written = await event_repo.bulk_insert(fresh)
             EVENTS_PERSISTED.inc(written)
+            self._w["persisted"] += written
 
             for _event, detection in all_detections:
                 alert, created = await correlator.apply(detection)
@@ -122,8 +131,10 @@ class Pipeline:
                 await session.refresh(alert)
                 if created:
                     ALERTS_CREATED.labels(rule_id=alert.rule_id, severity=alert.severity).inc()
+                    self._w["alerts_created"] += 1
                 else:
                     ALERTS_CORRELATED.labels(rule_id=alert.rule_id).inc()
+                    self._w["alerts_correlated"] += 1
                 alert_payloads.append(AlertRead.model_validate(alert))
 
         # --- publish to real-time subscribers ---
@@ -132,9 +143,11 @@ class Pipeline:
             await self.redis.publish(CHANNEL_ALERTS, payload.model_dump_json())
 
         # --- rolling metrics + anomaly feed ---
+        batch_secs = time.perf_counter() - started
+        self._w_batch_secs += batch_secs
+        self._w["batches"] += 1
+        PIPELINE_LATENCY.observe(batch_secs / max(len(fresh), 1))
         await self._update_metrics(fresh, all_detections)
-
-        PIPELINE_LATENCY.observe((time.perf_counter() - started) / max(len(fresh), 1))
 
     # ------------------------------------------------------------------ #
     async def _publish_events(self, events: list[SecurityEvent]) -> None:
@@ -149,7 +162,6 @@ class Pipeline:
 
     async def _update_metrics(self, events: list[SecurityEvent], detections: list) -> None:
         now_minute = self._current_minute()
-        self._window_events += len(events)
 
         for e in events:
             self._minute_counter["events"] += 1
@@ -163,17 +175,51 @@ class Pipeline:
             if e.source_ip:
                 self._minute_ips.add(e.source_ip)
 
-        # events/sec over a ~5s sliding measurement
+        # --- rolling ~5s measurement window for the dashboard / Performance page ---
         elapsed = time.monotonic() - self._window_started
         if elapsed >= 5:
-            eps = self._window_events / elapsed
+            w = self._w
+            ingested = w["ingested"]
+            persisted = w["persisted"]
+            batches = max(w["batches"], 1)
+            eps = ingested / elapsed
+            pps = persisted / elapsed
+            # mean per-event pipeline / detection latency, in ms
+            pipeline_ms = (self._w_batch_secs / max(persisted, 1)) * 1000
+            detect_ms = (self._w_detect_secs / max(persisted, 1)) * 1000
+            alerts_per_min = (w["alerts_created"] / elapsed) * 60
+            errored = w["invalid"]
+            # pipeline health: fresh worker + low reject rate (documented formula)
+            reject_rate = errored / max(ingested, 1)
+            health = round(max(0.0, 1.0 - reject_rate) * 100, 2)
+
             EVENTS_PER_SECOND.set(eps)
-            await self.redis.hset(_METRIC_HASH, mapping={"events_per_second": f"{eps:.2f}"})
+            payload = {
+                "events_per_second": round(eps, 2),
+                "events_processed_per_second": round(pps, 2),
+                "pipeline_latency_ms": round(pipeline_ms, 3),
+                "detection_latency_ms": round(detect_ms, 3),
+                "alerts_per_minute": round(alerts_per_min, 2),
+                "invalid_events_window": errored,
+                "duplicate_events_window": w["duplicate"],
+                "batches_window": batches,
+                "pipeline_health_pct": health,
+                "window_seconds": round(elapsed, 1),
+                "updated_at": time.time(),
+            }
+            await self.redis.hset(_METRIC_HASH, mapping={k: str(v) for k, v in payload.items()})
             await self.redis.expire(_METRIC_HASH, 300)
-            await self.redis.publish(
-                CHANNEL_METRICS, orjson.dumps({"events_per_second": round(eps, 2)})
-            )
-            self._window_events = 0
+            await self.redis.publish(CHANNEL_METRICS, orjson.dumps(payload))
+            # bounded rolling history for the Performance page (~20 min at 5s)
+            hist = self.redis.pipeline()
+            hist.lpush("siem:metrics:history", orjson.dumps(payload))
+            hist.ltrim("siem:metrics:history", 0, 240)
+            hist.expire("siem:metrics:history", 1800)
+            await hist.execute()
+
+            self._w = Counter()
+            self._w_batch_secs = 0.0
+            self._w_detect_secs = 0.0
             self._window_started = time.monotonic()
 
         # per-minute rollover → feed anomaly + ML

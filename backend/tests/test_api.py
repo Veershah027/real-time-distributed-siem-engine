@@ -110,8 +110,35 @@ async def test_metrics_shape(app_client):
 async def test_detections_catalogue(app_client):
     r = await app_client.get("/api/detections")
     assert r.status_code == 200
-    ids = {x["rule_id"] for x in r.json()["rules"]}
+    body = r.json()
+    ids = {x["rule_id"] for x in body["rules"]}
     assert "RULE-001" in ids
+    # activity fields are always present (0 when nothing has fired)
+    for rule in body["rules"]:
+        assert "trigger_count" in rule and "handle" in rule
+    assert "total_triggers" in body
+
+
+async def test_anomalies_endpoint(app_client):
+    r = await app_client.get("/api/anomalies")
+    assert r.status_code == 200
+    body = r.json()
+    assert "anomalies" in body and "baselines" in body
+    assert {b["metric"] for b in body["baselines"]} >= {"events_per_min", "auth_failures_per_min"}
+
+
+async def test_analytics_threat_activity(app_client):
+    r = await app_client.get("/api/analytics/threat-activity?minutes=60")
+    assert r.status_code == 200
+    body = r.json()
+    for key in ("events_timeseries", "alerts_timeseries", "rule_frequency", "top_source_ips"):
+        assert key in body
+
+
+async def test_analytics_performance(app_client):
+    r = await app_client.get("/api/analytics/performance")
+    assert r.status_code == 200
+    assert "history" in r.json() and "current" in r.json()
 
 
 async def test_system_status(app_client):
@@ -161,10 +188,15 @@ async def test_alert_lifecycle(app_client):
     assert r.status_code == 200
     assert r.json()["status"] == "acknowledged"
 
-    # invalid transition acknowledged -> false_positive is allowed; resolved -> acknowledged is not
+    # incident workflow: acknowledged -> investigating -> resolved
+    r = await app_client.patch(f"/api/alerts/{alert_id}", json={"status": "investigating"})
+    assert r.status_code == 200
+    assert r.json()["status"] == "investigating"
+
     r = await app_client.patch(f"/api/alerts/{alert_id}", json={"status": "resolved"})
     assert r.status_code == 200
-    r = await app_client.patch(f"/api/alerts/{alert_id}", json={"status": "acknowledged"})
+    # resolved -> investigating is not a valid transition
+    r = await app_client.patch(f"/api/alerts/{alert_id}", json={"status": "investigating"})
     assert r.status_code == 409
 
 

@@ -90,8 +90,12 @@ exclude = ["alembic/", "tests/"]
 module = [
     "app.services.metrics_service",
     "app.streaming.pipeline",
+    "app.streaming.kafka",
+    "app.worker",
     "app.api.routes.system",
     "app.api.routes.realtime",
+    "app.api.routes.analytics",
+    "app.api.routes.anomalies",
 ]
 disable_error_code = ["misc"]
 

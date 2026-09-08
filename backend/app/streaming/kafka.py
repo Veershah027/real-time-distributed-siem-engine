@@ -152,6 +152,24 @@ class EventConsumer:
         if self._consumer is not None:
             await self._consumer.commit()
 
+    async def lag(self) -> int | None:
+        """Total un-consumed messages across assigned partitions (None if idle)."""
+        c = self._consumer
+        if c is None:
+            return None
+        parts = list(c.assignment())
+        if not parts:
+            return None
+        try:
+            end = await c.end_offsets(parts)
+        except Exception:
+            return None
+        total = 0
+        for tp in parts:
+            pos = await c.position(tp)
+            total += max(0, end.get(tp, pos) - pos)
+        return total
+
     async def stop(self) -> None:
         self._stopping.set()
         if self._consumer is not None:

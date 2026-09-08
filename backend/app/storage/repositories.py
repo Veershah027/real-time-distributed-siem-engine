@@ -15,6 +15,11 @@ from app.schemas.enums import AlertStatus
 from app.schemas.event import SecurityEvent
 
 MAX_LIMIT = 200
+_ACTIVE_STATUSES = (
+    AlertStatus.OPEN.value,
+    AlertStatus.ACKNOWLEDGED.value,
+    AlertStatus.INVESTIGATING.value,
+)
 
 
 def _paginate(stmt: Select, limit: int, offset: int) -> Select:
@@ -180,6 +185,41 @@ class EventRepository:
             for b, c in (await self.session.execute(stmt)).all()
         ]
 
+    async def top_hosts(self, since: datetime, limit: int = 10) -> list[dict[str, Any]]:
+        high = func.sum(case((SecurityEventRow.severity.in_(("high", "critical")), 1), else_=0))
+        stmt = (
+            select(
+                SecurityEventRow.source,
+                SecurityEventRow.source_type,
+                func.count().label("events"),
+                high,
+            )
+            .where(SecurityEventRow.timestamp >= since)
+            .group_by(SecurityEventRow.source, SecurityEventRow.source_type)
+            .order_by(func.count().desc())
+            .limit(min(limit, 50))
+        )
+        return [
+            {
+                "host": host,
+                "source_type": st,
+                "event_count": int(cnt),
+                "high_severity_events": int(hi or 0),
+            }
+            for host, st, cnt, hi in (await self.session.execute(stmt)).all()
+        ]
+
+    async def severity_breakdown(self, since: datetime) -> list[dict[str, Any]]:
+        stmt = (
+            select(SecurityEventRow.severity, func.count())
+            .where(SecurityEventRow.timestamp >= since)
+            .group_by(SecurityEventRow.severity)
+        )
+        return [
+            {"severity": sev, "count": int(c)}
+            for sev, c in (await self.session.execute(stmt)).all()
+        ]
+
 
 # --------------------------------------------------------------------------- #
 # Alerts
@@ -192,7 +232,9 @@ class AlertRepository:
         stmt = select(Alert).where(
             Alert.rule_id == rule_id,
             Alert.correlation_key == correlation_key,
-            Alert.status.in_([AlertStatus.OPEN, AlertStatus.ACKNOWLEDGED]),
+            Alert.status.in_(
+                [AlertStatus.OPEN, AlertStatus.ACKNOWLEDGED, AlertStatus.INVESTIGATING]
+            ),
         )
         return await self.session.scalar(stmt)
 
@@ -238,6 +280,73 @@ class AlertRepository:
         return out
 
     async def timeseries(self, since: datetime, bucket_seconds: int = 300) -> list[dict[str, Any]]:
+        bucket = func.to_timestamp(
+            func.floor(func.extract("epoch", Alert.first_seen) / bucket_seconds) * bucket_seconds
+        )
+        stmt = (
+            select(bucket.label("bucket"), Alert.severity, func.count())
+            .where(Alert.first_seen >= since)
+            .group_by("bucket", Alert.severity)
+            .order_by("bucket")
+        )
+        return [
+            {"bucket": b.isoformat(), "severity": sev, "count": int(c)}
+            for b, sev, c in (await self.session.execute(stmt)).all()
+        ]
+
+    async def rule_activity(self) -> dict[str, dict[str, Any]]:
+        """Per-rule alert counts and last-triggered time (all time)."""
+        stmt = select(
+            Alert.rule_id,
+            func.count().label("total"),
+            func.max(Alert.last_seen).label("last_triggered"),
+            func.sum(case((Alert.status.in_(_ACTIVE_STATUSES), 1), else_=0)).label("active"),
+        ).group_by(Alert.rule_id)
+        out: dict[str, dict[str, Any]] = {}
+        for rid, total, last, active in (await self.session.execute(stmt)).all():
+            out[rid] = {
+                "trigger_count": int(total),
+                "active_count": int(active or 0),
+                "last_triggered": last.isoformat() if last else None,
+            }
+        return out
+
+    async def affected_hosts(self, since: datetime, limit: int = 10) -> list[dict[str, Any]]:
+        crit = func.sum(case((Alert.severity == "critical", 1), else_=0))
+        stmt = (
+            select(
+                Alert.affected_host,
+                func.count().label("alerts"),
+                func.sum(Alert.event_count).label("events"),
+                crit,
+            )
+            .where(Alert.first_seen >= since, Alert.affected_host.is_not(None))
+            .group_by(Alert.affected_host)
+            .order_by(func.count().desc())
+            .limit(min(limit, 50))
+        )
+        return [
+            {
+                "host": host,
+                "alert_count": int(a),
+                "event_count": int(e or 0),
+                "critical_alerts": int(c or 0),
+            }
+            for host, a, e, c in (await self.session.execute(stmt)).all()
+        ]
+
+    async def recent_by_kind(self, kind: str, limit: int = 25) -> list[Alert]:
+        stmt = (
+            select(Alert)
+            .where(Alert.detection_kind == kind)
+            .order_by(Alert.last_seen.desc())
+            .limit(min(limit, MAX_LIMIT))
+        )
+        return list((await self.session.scalars(stmt)).all())
+
+    async def severity_heatmap(
+        self, since: datetime, bucket_seconds: int = 3600
+    ) -> list[dict[str, Any]]:
         bucket = func.to_timestamp(
             func.floor(func.extract("epoch", Alert.first_seen) / bucket_seconds) * bucket_seconds
         )
