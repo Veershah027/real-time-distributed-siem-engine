@@ -4,14 +4,17 @@ FROM python:3.12-slim AS base
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_DEFAULT_TIMEOUT=120 \
+    PIP_RETRIES=6
 
 WORKDIR /app
 
 # --- build layer: resolve + install dependencies into a venv ---
+# All runtime deps ship manylinux wheels for cp312 on amd64/arm64, so no
+# compiler toolchain is needed. If you add a source-only dependency, install
+# build-essential here.
 FROM base AS builder
-RUN apt-get update && apt-get install -y --no-install-recommends build-essential \
-    && rm -rf /var/lib/apt/lists/*
 RUN python -m venv /venv
 ENV PATH="/venv/bin:$PATH"
 COPY pyproject.toml ./

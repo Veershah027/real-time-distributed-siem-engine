@@ -25,15 +25,16 @@ services:
   redpanda:
     image: redpandadata/redpanda:v24.2.7
     command:
-      - redpanda start
+      - redpanda
+      - start
       - --overprovisioned
-      - --smp 1
-      - --memory 512M
-      - --reserve-memory 0M
-      - --node-id 0
+      - --smp=1
+      - --memory=768M
+      - --reserve-memory=0M
+      - --node-id=0
       - --check=false
-      - --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:19092
-      - --advertise-kafka-addr internal://redpanda:9092,external://localhost:19092
+      - --kafka-addr=internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr=internal://redpanda:9092,external://localhost:19092
     ports:
       - "127.0.0.1:19092:19092"   # host access for local `python -m simulator`
       - "127.0.0.1:9644:9644"     # admin API (metrics)
@@ -101,12 +102,13 @@ services:
         condition: service_healthy
       redpanda:
         condition: service_healthy
+    # healthcheck is defined in backend/Dockerfile (urllib GET /health)
     healthcheck:
-      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health',timeout=4).status==200 else 1)\""]
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health',timeout=4).status==200 else 1)"]
       interval: 15s
       timeout: 5s
-      retries: 6
-      start_period: 40s
+      retries: 8
+      start_period: 45s
 
   worker:
     build:
