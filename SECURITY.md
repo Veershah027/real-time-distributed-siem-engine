@@ -59,8 +59,12 @@ Please **do not open a public issue** for a security problem.
 
 - No transport security between services in local/demo mode.
 - No authn/authz on the WebSocket channel (it is read-only).
-- `pip-audit` in CI is advisory (does not fail the build) so an upstream CVE with
-  no fix does not block development — review its output on each run.
+- `pip-audit` in CI is advisory (does not fail the build). Dependencies are
+  pinned for reproducible builds; the advisory database currently flags several
+  transitive packages (`starlette` via FastAPI, `python-multipart`, `pyjwt`,
+  `orjson`) for recently-disclosed issues without a compatible fixed release.
+  These are tracked and bumped as upstream ships fixes — review `pip-audit`
+  output on each run rather than treating a green CI as "no known issues".
 - The frontend bundle is not subresource-integrity pinned.
 - No secret management integration — secrets come from `.env` / environment.
 - Detection rules are demonstration rules; do not treat their verdicts as

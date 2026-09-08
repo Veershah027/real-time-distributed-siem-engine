@@ -5,10 +5,17 @@ global:
   evaluation_interval: 15s
 
 scrape_configs:
-  - job_name: siem-backend
+  # API process — HTTP request counters, etc.
+  - job_name: siem-api
     metrics_path: /metrics
     static_configs:
       - targets: ["localhost:8000"]
+
+  # Stream processor — pipeline/detection counters and latency histograms.
+  - job_name: siem-worker
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["localhost:9109"]
 
   - job_name: redpanda
     metrics_path: /public_metrics

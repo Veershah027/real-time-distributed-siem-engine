@@ -117,6 +117,8 @@ services:
     command: ["worker"]
     environment:
       <<: *backend-env
+    ports:
+      - "127.0.0.1:9109:9109"   # worker Prometheus metrics (pipeline counters)
     depends_on:
       backend:
         condition: service_started

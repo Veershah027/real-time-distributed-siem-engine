@@ -22,7 +22,7 @@ COPY app ./app
 COPY alembic ./alembic
 COPY alembic.ini ./
 # install runtime deps only (no dev/ml extras) from pyproject
-RUN pip install --upgrade pip && pip install .
+RUN pip install --upgrade pip setuptools && pip install .
 
 # --- runtime image ---
 FROM base AS runtime

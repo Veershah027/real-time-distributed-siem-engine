@@ -32,6 +32,7 @@ except ImportError:  # pragma: no cover
     sys.exit(1)
 
 API = "http://localhost:8000"
+WORKER_METRICS = "http://localhost:9109/metrics"  # pipeline counters live here
 
 
 def _metrics(client: httpx.Client) -> dict:
@@ -39,7 +40,7 @@ def _metrics(client: httpx.Client) -> dict:
 
 
 def _prom(client: httpx.Client) -> dict[str, float]:
-    text = client.get(f"{API}/metrics", timeout=10).text
+    text = client.get(WORKER_METRICS, timeout=10).text
     out: dict[str, float] = {}
     for line in text.splitlines():
         if line.startswith("#") or " " not in line:
@@ -69,7 +70,7 @@ def main() -> int:
         return 1
 
     if not args.no_simulator:
-        print(f"→ setting simulator: rate={args.rate} scenario={args.scenario}")
+        print(f">> setting simulator: rate={args.rate} scenario={args.scenario}")
         client.post(
             f"{API}/api/simulator/start",
             json={"rate": args.rate, "scenario": args.scenario},
@@ -80,7 +81,7 @@ def main() -> int:
     p0 = _prom(client)
     m0 = _metrics(client)
     t0 = time.time()
-    print(f"→ measuring for {args.duration}s ...")
+    print(f">> measuring for {args.duration}s ...")
     time.sleep(args.duration)
     elapsed = time.time() - t0
     p1 = _prom(client)

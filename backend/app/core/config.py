@@ -93,6 +93,7 @@ class Settings(BaseSettings):
     # --- Pipeline tuning ---
     consumer_batch_max: int = Field(500, alias="SIEM_CONSUMER_BATCH_MAX")
     persist_batch_size: int = Field(200, alias="SIEM_PERSIST_BATCH_SIZE")
+    worker_metrics_port: int = Field(9109, alias="SIEM_WORKER_METRICS_PORT")
 
     @computed_field  # type: ignore[prop-decorator]
     @property

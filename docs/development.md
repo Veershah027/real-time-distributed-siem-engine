@@ -53,8 +53,8 @@ docker compose down                # stop
 docker compose down -v             # stop + wipe volumes (full reset)
 ```
 
-Ports (all bound to `127.0.0.1`): dashboard `8080`, API `8000`, Postgres `5432`,
-Redis `6379`, Redpanda `19092` (Kafka) / `9644` (admin).
+Ports (all bound to `127.0.0.1`): dashboard `8080`, API `8000`, worker metrics
+`9109`, Postgres `5432`, Redis `6379`, Redpanda `19092` (Kafka) / `9644` (admin).
 
 ### Makefile shortcuts
 

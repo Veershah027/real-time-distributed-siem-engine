@@ -13,8 +13,11 @@ import asyncio
 import contextlib
 import signal
 
+from prometheus_client import start_http_server
+
 from app.core.config import settings
 from app.core.logging import configure_logging, get_logger
+from app.core.metrics import REGISTRY
 from app.storage.db import dispose_engine
 from app.storage.redis_client import close_redis, get_redis
 from app.streaming.kafka import EventConsumer
@@ -36,6 +39,12 @@ async def _gauge_refresher(pipeline: Pipeline, stop: asyncio.Event) -> None:
 
 async def run() -> None:
     configure_logging()
+    # the pipeline's Prometheus counters live in this process, so the worker
+    # exposes its own scrape endpoint (the API's /metrics only has API counters)
+    with contextlib.suppress(OSError):
+        start_http_server(settings.worker_metrics_port, registry=REGISTRY)
+        log.info("worker_metrics_listening", port=settings.worker_metrics_port)
+
     redis_client = get_redis()
     consumer = EventConsumer()
     pipeline = Pipeline(redis_client)

@@ -56,7 +56,9 @@ flowchart LR
    metrics go to `siem:stream:metrics` and Redis hashes with short TTLs.
 10. **Serve.** FastAPI reads durable data from Postgres and real-time data from
     Redis. `/ws` bridges the pub/sub channels to the browser; the dashboard never
-    polls for the live views.
+    polls for the live views. Prometheus counters are process-local, so the API
+    exposes API metrics on `:8000/metrics` and the worker exposes the
+    pipeline/detection counters on `:9109/metrics`.
 11. **Per-minute rollup.** The pipeline aggregates each minute into a feature
     vector and feeds `StatisticalAnomalyDetector` (and optionally the Isolation
     Forest). Anomalies become `ANOM-001` / `ML-001` alerts through the same

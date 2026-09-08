@@ -9,7 +9,7 @@ RUN python -m venv /venv
 ENV PATH="/venv/bin:$PATH"
 COPY pyproject.toml ./
 COPY simulator ./simulator
-RUN pip install --upgrade pip && pip install .
+RUN pip install --upgrade pip setuptools && pip install .
 
 FROM base AS runtime
 RUN groupadd -r sim && useradd -r -g sim -d /app sim
