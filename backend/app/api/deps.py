@@ -48,9 +48,7 @@ async def current_principal(
     if not settings.auth_enabled:
         return {"sub": "anonymous", "role": "analyst"}
     if not authorization or not authorization.lower().startswith("bearer "):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="missing bearer token"
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="missing bearer token")
     claims = decode_access_token(authorization.split(" ", 1)[1])
     return {"sub": claims.get("sub", "unknown"), "role": claims.get("role", "analyst")}
 

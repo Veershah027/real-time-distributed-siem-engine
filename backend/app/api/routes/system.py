@@ -29,7 +29,7 @@ async def system_status(session: DBSession, redis: RedisClient) -> dict:
             "status": "up",
             "latency_ms": round((time.perf_counter() - t0) * 1000, 2),
         }
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         components["postgres"] = {"status": "down", "error": type(exc).__name__}
 
     t0 = time.perf_counter()
@@ -39,7 +39,7 @@ async def system_status(session: DBSession, redis: RedisClient) -> dict:
             "status": "up",
             "latency_ms": round((time.perf_counter() - t0) * 1000, 2),
         }
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         components["redis"] = {"status": "down", "error": type(exc).__name__}
 
     # Worker liveness — the pipeline stamps this hash roughly every 5s.

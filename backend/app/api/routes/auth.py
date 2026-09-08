@@ -35,9 +35,7 @@ async def login(body: LoginRequest, session: DBSession) -> TokenResponse:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="auth disabled")
     user = await session.scalar(select(User).where(User.username == body.username))
     if user is None or not user.is_active or not verify_password(body.password, user.password_hash):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid credentials"
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid credentials")
     token = create_access_token(user.username, user.role)
     return TokenResponse(access_token=token, role=user.role)
 

@@ -27,7 +27,7 @@ async def list_alerts(
     source_ip: str | None = Query(None),
 ) -> Page[AlertRead]:
     repo = AlertRepository(session)
-    rows, total = await repo.list(
+    rows, total = await repo.search(
         status=status.value if status else None,
         severity=severity,
         rule_id=rule_id,

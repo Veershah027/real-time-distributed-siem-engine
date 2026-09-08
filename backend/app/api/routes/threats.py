@@ -32,9 +32,7 @@ async def top_ips(
 
 
 @router.get("/event-types")
-async def event_types(
-    session: DBSession, minutes: int = Query(60, ge=5, le=1440)
-) -> dict:
+async def event_types(session: DBSession, minutes: int = Query(60, ge=5, le=1440)) -> dict:
     since = datetime.now(UTC) - timedelta(minutes=minutes)
     breakdown = await EventRepository(session).event_type_breakdown(since)
     return {"window_minutes": minutes, "items": breakdown}

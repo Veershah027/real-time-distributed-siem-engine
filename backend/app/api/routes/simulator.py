@@ -33,7 +33,9 @@ async def scenarios() -> dict:
 
 
 @router.post("/start")
-async def start(redis: RedisClient, principal: Principal, cfg: SimulatorConfig | None = None) -> dict:
+async def start(
+    redis: RedisClient, principal: Principal, cfg: SimulatorConfig | None = None
+) -> dict:
     patch: dict = {"running": True}
     if cfg:
         patch.update({k: v for k, v in cfg.model_dump().items() if v is not None})
@@ -50,9 +52,7 @@ async def stop(redis: RedisClient, principal: Principal) -> dict:
 
 
 @router.post("/configure")
-async def configure(
-    cfg: SimulatorConfig, redis: RedisClient, principal: Principal
-) -> dict:
+async def configure(cfg: SimulatorConfig, redis: RedisClient, principal: Principal) -> dict:
     patch = {k: v for k, v in cfg.model_dump().items() if v is not None}
     if not patch:
         raise HTTPException(status_code=422, detail="no configuration supplied")

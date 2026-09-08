@@ -34,9 +34,7 @@ _CHANNELS = {
 def _resolve_channels(topics: str | None) -> list[str]:
     if not topics:
         return list(_CHANNELS.values())
-    picked = [
-        _CHANNELS[t.strip()] for t in topics.split(",") if t.strip() in _CHANNELS
-    ]
+    picked = [_CHANNELS[t.strip()] for t in topics.split(",") if t.strip() in _CHANNELS]
     return picked or list(_CHANNELS.values())
 
 
@@ -70,7 +68,7 @@ async def ws(websocket: WebSocket, topics: str | None = Query(None)) -> None:
             await websocket.send_json({"type": kind, "data": payload})
     except WebSocketDisconnect:
         pass
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         log.warning("ws_error", error=str(exc))
     finally:
         client_task.cancel()
@@ -91,9 +89,7 @@ async def sse(request: Request, topics: str | None = Query(None)) -> EventSource
             while True:
                 if await request.is_disconnected():
                     break
-                message = await pubsub.get_message(
-                    ignore_subscribe_messages=True, timeout=15
-                )
+                message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=15)
                 if message is None:
                     yield {"event": "ping", "data": "{}"}
                     continue

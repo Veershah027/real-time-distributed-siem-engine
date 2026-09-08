@@ -24,15 +24,13 @@ async def ready(session: DBSession, redis: RedisClient) -> HealthResponse:
     try:
         await session.execute(text("SELECT 1"))
         checks["postgres"] = "ok"
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         checks["postgres"] = f"error: {type(exc).__name__}"
     try:
         await redis.ping()
         checks["redis"] = "ok"
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         checks["redis"] = f"error: {type(exc).__name__}"
 
     status = "ok" if all(v == "ok" for v in checks.values()) else "degraded"
-    return HealthResponse(
-        status=status, version=__version__, env=settings.env, checks=checks
-    )
+    return HealthResponse(status=status, version=__version__, env=settings.env, checks=checks)

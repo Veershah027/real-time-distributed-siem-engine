@@ -29,7 +29,7 @@ async def list_events(
     end: datetime | None = Query(None),
 ) -> Page[EventRead]:
     repo = EventRepository(session)
-    rows, total = await repo.list(
+    rows, total = await repo.search(
         limit=page.limit,
         offset=page.offset,
         event_type=event_type,
