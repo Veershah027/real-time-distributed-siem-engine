@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "siem-engine-simulator"
+version = "0.1.0"
+description = "Enterprise security-log simulator for the SIEM engine (defensive, offline)"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Veer Shah" }]
+dependencies = [
+    "aiokafka==0.12.0",
+    "redis==5.2.1",
+    "orjson==3.10.12",
+    "structlog==24.4.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest==8.3.4", "pytest-asyncio==0.25.0", "ruff==0.8.4"]
+
+[project.scripts]
+siem-simulator = "simulator.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["simulator*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+ignore = ["S311"]  # non-crypto RNG is intentional for a traffic simulator
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"

@@ -1,0 +1,27 @@
+# Dev override: hot-reload backend, run frontend via Vite, expose the broker.
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+#
+# Use this when you want to edit backend code without rebuilding the image.
+
+name: siem-engine
+
+services:
+  backend:
+    volumes:
+      - ./backend/app:/app/app:ro
+      - ./backend/alembic:/app/alembic:ro
+    environment:
+      SIEM_ENV: development
+      SIEM_LOG_JSON: "false"
+    command: ["api"]
+
+  worker:
+    volumes:
+      - ./backend/app:/app/app:ro
+    environment:
+      SIEM_LOG_JSON: "false"
+
+  # Run the frontend dev server on the host instead:
+  #   cd frontend && npm install && npm run dev
+  frontend:
+    profiles: ["disabled"]

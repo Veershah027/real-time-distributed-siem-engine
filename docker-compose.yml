@@ -1,0 +1,165 @@
+# Real-Time Distributed Enterprise SIEM Engine — full local stack.
+#   docker compose up --build
+#
+# Services: redpanda (broker) · postgres · redis · backend api · stream worker
+#           · simulator · frontend (nginx)
+
+name: siem-engine
+
+x-backend-env: &backend-env
+  SIEM_ENV: ${SIEM_ENV:-development}
+  SIEM_LOG_JSON: "true"
+  POSTGRES_USER: ${POSTGRES_USER:-siem}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-siem_dev_password_change_me}
+  POSTGRES_DB: ${POSTGRES_DB:-siem}
+  POSTGRES_HOST: postgres
+  POSTGRES_PORT: "5432"
+  REDIS_HOST: redis
+  REDIS_PORT: "6379"
+  SIEM_KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
+  SIEM_KAFKA_TOPIC_EVENTS: ${SIEM_KAFKA_TOPIC_EVENTS:-siem.events.raw}
+  SIEM_ENABLE_ML: ${SIEM_ENABLE_ML:-false}
+  SIEM_CORS_ORIGINS: ${SIEM_CORS_ORIGINS:-http://localhost:5173,http://localhost:8080}
+
+services:
+  redpanda:
+    image: redpandadata/redpanda:v24.2.7
+    command:
+      - redpanda start
+      - --overprovisioned
+      - --smp 1
+      - --memory 512M
+      - --reserve-memory 0M
+      - --node-id 0
+      - --check=false
+      - --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr internal://redpanda:9092,external://localhost:19092
+    ports:
+      - "127.0.0.1:19092:19092"   # host access for local `python -m simulator`
+      - "127.0.0.1:9644:9644"     # admin API (metrics)
+    healthcheck:
+      test: ["CMD-SHELL", "rpk cluster health | grep -q 'Healthy:.*true'"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    volumes:
+      - redpanda-data:/var/lib/redpanda/data
+
+  redpanda-init:
+    image: redpandadata/redpanda:v24.2.7
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >
+        rpk topic create ${SIEM_KAFKA_TOPIC_EVENTS:-siem.events.raw}
+        --brokers redpanda:9092 -p 6 -r 1 || true
+    restart: "no"
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-siem}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-siem_dev_password_change_me}
+      POSTGRES_DB: ${POSTGRES_DB:-siem}
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-siem} -d ${POSTGRES_DB:-siem}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    ports:
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  backend:
+    build:
+      context: ./backend
+    image: siem-engine/backend:local
+    command: ["api"]
+    environment:
+      <<: *backend-env
+      SIEM_API_PORT: "8000"
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      redpanda:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health',timeout=4).status==200 else 1)\""]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 40s
+
+  worker:
+    build:
+      context: ./backend
+    image: siem-engine/backend:local
+    command: ["worker"]
+    environment:
+      <<: *backend-env
+    depends_on:
+      backend:
+        condition: service_started
+      redpanda:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  simulator:
+    build:
+      context: ./simulator
+    image: siem-engine/simulator:local
+    command: ["--scenario", "${SIEM_SIMULATOR_SCENARIO:-mixed}", "--rate", "${SIEM_EVENTS_PER_SECOND:-60}", "--attack-ratio", "${SIEM_SIMULATOR_ATTACK_RATIO:-0.06}"]
+    environment:
+      SIEM_KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
+      SIEM_KAFKA_TOPIC_EVENTS: ${SIEM_KAFKA_TOPIC_EVENTS:-siem.events.raw}
+      SIEM_REDIS_URL: redis://redis:6379/0
+      SIEM_SIMULATOR_AUTOSTART: "true"
+      SIEM_EVENTS_PER_SECOND: ${SIEM_EVENTS_PER_SECOND:-60}
+    depends_on:
+      redpanda:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      redpanda-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # empty base => same-origin; nginx in the frontend image proxies /api and /ws to backend
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-}
+        VITE_WS_URL: ${VITE_WS_URL:-/ws}
+    image: siem-engine/frontend:local
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      backend:
+        condition: service_started
+
+volumes:
+  redpanda-data:
+  postgres-data:
