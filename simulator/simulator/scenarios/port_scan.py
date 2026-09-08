@@ -6,8 +6,34 @@ import random
 
 from simulator.models import FW_HOSTS, make_event, rand_external_ip, rand_internal_ip
 
-_COMMON_PORTS = [21, 22, 23, 25, 53, 80, 110, 135, 139, 143, 443, 445, 993, 995,
-                 1433, 1521, 2049, 3306, 3389, 5432, 5900, 6379, 8080, 8443, 9200, 27017]
+_COMMON_PORTS = [
+    21,
+    22,
+    23,
+    25,
+    53,
+    80,
+    110,
+    135,
+    139,
+    143,
+    443,
+    445,
+    993,
+    995,
+    1433,
+    1521,
+    2049,
+    3306,
+    3389,
+    5432,
+    5900,
+    6379,
+    8080,
+    8443,
+    9200,
+    27017,
+]
 
 
 def port_scan(*, ports: int | None = None, source_ip: str | None = None) -> list[dict]:

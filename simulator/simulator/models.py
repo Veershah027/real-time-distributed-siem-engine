@@ -18,19 +18,51 @@ IDP_HOSTS = ["idp-01", "idp-02"]
 DNS_HOSTS = ["dns-01", "dns-02"]
 
 USERS = [
-    "alice", "bob", "carol", "dave", "erin", "frank", "grace", "heidi",
-    "ivan", "judy", "mallory", "olivia", "peggy", "trent", "victor", "walter",
-    "svc_backup", "svc_ci", "svc_monitoring", "jenkins",
+    "alice",
+    "bob",
+    "carol",
+    "dave",
+    "erin",
+    "frank",
+    "grace",
+    "heidi",
+    "ivan",
+    "judy",
+    "mallory",
+    "olivia",
+    "peggy",
+    "trent",
+    "victor",
+    "walter",
+    "svc_backup",
+    "svc_ci",
+    "svc_monitoring",
+    "jenkins",
 ]
 ADMINS = {"root", "admin", "administrator"}
 PRIVILEGED_USERS = {"alice", "trent", "svc_ci"}
 
 SERVICES = ["ssh", "sshd", "nginx", "postgres", "api-gateway", "auth-service", "cron"]
-HTTP_PATHS = ["/", "/login", "/api/health", "/api/users", "/api/orders", "/static/app.js",
-              "/dashboard", "/api/reports", "/favicon.ico"]
+HTTP_PATHS = [
+    "/",
+    "/login",
+    "/api/health",
+    "/api/users",
+    "/api/orders",
+    "/static/app.js",
+    "/dashboard",
+    "/api/reports",
+    "/favicon.ico",
+]
 HTTP_METHODS = ["GET", "GET", "GET", "POST", "POST", "PUT", "DELETE"]
-DNS_NAMES = ["updates.internal", "pkg.repo.internal", "api.partner.example",
-             "cdn.assets.example", "smtp.corp.internal", "ntp.pool.internal"]
+DNS_NAMES = [
+    "updates.internal",
+    "pkg.repo.internal",
+    "api.partner.example",
+    "cdn.assets.example",
+    "smtp.corp.internal",
+    "ntp.pool.internal",
+]
 
 INTERNAL_NET = ipaddress.ip_network("10.42.0.0/16")
 EXTERNAL_SAMPLE = ipaddress.ip_network("203.0.113.0/24")  # TEST-NET-3 (safe, non-routable)

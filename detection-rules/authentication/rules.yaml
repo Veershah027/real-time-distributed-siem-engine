@@ -1,0 +1,73 @@
+# Authentication detection rules — reference (mirrors backend/app/detection/rules/)
+# Runtime source of truth is the code; thresholds overridable via SIEM_RULE_* env.
+rules:
+  - id: RULE-001
+    name: SSH / service brute force
+    detector: BruteForceDetector
+    category: authentication
+    severity: high            # -> critical if a login then succeeds from the same IP
+    kind: rule
+    mitre_attack: [T1110.001]
+    trigger: >
+      More than `max_failures` authentication_failure events from one source_ip
+      within `window_seconds`.
+    parameters:
+      max_failures: 10            # SIEM_RULE_BRUTEFORCE_MAX_FAILURES
+      window_seconds: 60          # SIEM_RULE_BRUTEFORCE_WINDOW_SECONDS
+    correlation_key: "srcip:<ip>"
+    recommended_action: >
+      Investigate the source IP; block it if not attributable; force credential
+      reset for any account that authenticated from it.
+
+  - id: RULE-002
+    name: Password spraying
+    detector: PasswordSprayDetector
+    category: authentication
+    severity: high
+    kind: rule
+    mitre_attack: [T1110.003]
+    trigger: >
+      One source_ip attempts authentication against more than `unique_users`
+      distinct usernames within `window_seconds`.
+    parameters:
+      unique_users: 8              # SIEM_RULE_SPRAY_UNIQUE_USERS
+      window_seconds: 120          # SIEM_RULE_SPRAY_WINDOW_SECONDS
+    correlation_key: "srcip:<ip>:spray"
+    recommended_action: >
+      Confirm the IP is not a legitimate gateway; block it; review targeted
+      accounts for weak passwords; enable MFA.
+
+  - id: RULE-004
+    name: Privilege escalation
+    detector: PrivilegeEscalationDetector
+    category: authentication
+    severity: high
+    kind: rule
+    mitre_attack: [T1548, T1078]
+    trigger: >
+      A privileged action by a non-privileged actor, OR off-hours (22:00-05:59
+      UTC), OR an explicit privilege_escalation event from the host.
+    parameters:
+      privileged_roles: [admin, root, sudo, administrator]
+    correlation_key: "host:<host>:user:<user>:privesc"
+    recommended_action: >
+      Verify the change with the account owner and change management; revoke
+      elevated access if unsanctioned; preserve the host for forensics.
+
+  - id: RULE-007
+    name: Authentication anomaly
+    detector: AuthAnomalyDetector
+    category: authentication
+    severity: medium            # -> high on success + many IPs
+    kind: rule
+    mitre_attack: [T1078]
+    trigger: >
+      One account authenticates from more than `distinct_ips` distinct source
+      IPs within `window_seconds` (impossible-travel proxy).
+    parameters:
+      distinct_ips: 4
+      window_seconds: 300
+    correlation_key: "user:<username>:authgeo"
+    recommended_action: >
+      Contact the account owner; if unrecognised, invalidate sessions and reset
+      credentials; review access during the window.

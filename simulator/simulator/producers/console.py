@@ -11,7 +11,7 @@ class ConsoleProducer:
     def __init__(self, *_args, **_kwargs) -> None:
         self._count = 0
 
-    async def start(self) -> None:  # noqa: D401
+    async def start(self) -> None:
         pass
 
     async def send(self, event: dict) -> None:

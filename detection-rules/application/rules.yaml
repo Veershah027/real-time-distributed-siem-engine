@@ -1,0 +1,12 @@
+# Application-layer detection rules.
+#
+# Reserved for future work. The web-attack simulator scenario currently
+# surfaces through RULE-001/RULE-007 (auth) and shows up as repeated 4xx/5xx
+# http_request events on the dashboard, but there is no dedicated
+# application-layer detector yet.
+#
+# Candidate rules (roadmap):
+#   - APP-001  repeated 4xx/5xx from one source_ip within a window
+#   - APP-002  access to known-sensitive paths (/.env, /.git, /actuator/env)
+#   - APP-003  scanner user-agents (sqlmap, nikto, nuclei)
+rules: []

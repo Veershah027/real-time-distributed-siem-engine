@@ -1,0 +1,37 @@
+rules:
+  - id: RULE-003
+    name: Port scanning
+    detector: PortScanDetector
+    category: network
+    severity: high
+    kind: rule
+    mitre_attack: [T1046]
+    trigger: >
+      One source_ip contacts more than `unique_ports` distinct destination ports
+      within `window_seconds` across connection_attempt / firewall_deny /
+      firewall_allow / network_flow events.
+    parameters:
+      unique_ports: 20            # SIEM_RULE_PORTSCAN_UNIQUE_PORTS
+      window_seconds: 30          # SIEM_RULE_PORTSCAN_WINDOW_SECONDS
+    correlation_key: "srcip:<ip>:portscan"
+    recommended_action: >
+      Treat as reconnaissance; block at the perimeter; check whether any probed
+      service responded; review exposure of the scanned ports.
+
+  - id: RULE-006
+    name: Excessive outbound traffic
+    detector: DataExfiltrationDetector
+    category: network
+    severity: medium             # -> high at >= 3x threshold
+    kind: rule
+    mitre_attack: [T1041, T1048]
+    trigger: >
+      Sliding-window sum of bytes_out for a source_ip -> destination_ip pair
+      exceeds `bytes_threshold` within `window_seconds`.
+    parameters:
+      bytes_threshold: 52428800  # 50 MiB — SIEM_RULE_EXFIL_BYTES_THRESHOLD
+      window_seconds: 60         # SIEM_RULE_EXFIL_WINDOW_SECONDS
+    correlation_key: "srcip:<ip>:exfil"
+    recommended_action: >
+      Identify the destination; if not approved, isolate the host, capture the
+      flow, and check for staged archives on the source.

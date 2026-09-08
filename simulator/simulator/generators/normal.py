@@ -50,7 +50,9 @@ def _ssh_login() -> dict[str, Any]:
 
 
 def _http_request() -> dict[str, Any]:
-    status = random.choices([200, 200, 200, 204, 301, 404, 500], weights=[60, 15, 10, 5, 4, 4, 2])[0]
+    status = random.choices([200, 200, 200, 204, 301, 404, 500], weights=[60, 15, 10, 5, 4, 4, 2])[
+        0
+    ]
     method = random.choice(HTTP_METHODS)
     path = random.choice(HTTP_PATHS)
     return make_event(
@@ -65,7 +67,7 @@ def _http_request() -> dict[str, Any]:
         destination_port=443,
         bytes_out=random.randint(200, 24_000),
         bytes_in=random.randint(80, 2_000),
-        message=f'{method} {path} {status}',
+        message=f"{method} {path} {status}",
         metadata={"http_status": status, "method": method, "path": path},
     )
 
@@ -83,7 +85,11 @@ def _db_query() -> dict[str, Any]:
         service="postgres",
         action="query",
         message=q,
-        metadata={"query": q, "rows_returned": random.randint(0, 120), "duration_ms": random.randint(1, 90)},
+        metadata={
+            "query": q,
+            "rows_returned": random.randint(0, 120),
+            "duration_ms": random.randint(1, 90),
+        },
     )
 
 
@@ -131,7 +137,9 @@ def _app_event() -> dict[str, Any]:
         status="success",
         username=random.choice(USERS),
         service="api-gateway",
-        action=random.choice(["order.created", "report.exported", "profile.updated", "cache.refreshed"]),
+        action=random.choice(
+            ["order.created", "report.exported", "profile.updated", "cache.refreshed"]
+        ),
         message="application event",
     )
 

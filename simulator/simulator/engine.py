@@ -148,7 +148,7 @@ class SimulatorEngine:
             try:
                 await self.producer.send(event)
                 self._sent_total += 1
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 log.warning("send_failed", error=str(exc))
                 return
 

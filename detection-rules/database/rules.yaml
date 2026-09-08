@@ -1,0 +1,28 @@
+rules:
+  - id: RULE-005
+    name: Suspicious database activity
+    detector: SuspiciousSQLDetector
+    category: database
+    severity: medium             # -> high for high-weight patterns
+    kind: rule
+    mitre_attack: [T1190, T1213]
+    trigger: >
+      The query text in a synthetic db_query / db_error event matches known
+      injection / exfiltration patterns, or returns an abnormally large result
+      set. No SQL is ever executed — this is pattern matching on log text.
+    patterns:
+      - "UNION SELECT"           # weight 0.90
+      - "OR 1=1"                 # 0.85
+      - "stacked query (; DROP/DELETE/UPDATE/INSERT)"   # 0.90
+      - "information_schema / pg_catalog / sysobjects"  # 0.60
+      - "load_file / INTO OUTFILE / pg_read_file / xp_cmdshell"  # 0.95
+      - "unparameterised SELECT * FROM <sensitive table>"        # 0.50
+      - "string-literal comment truncation ('--)"      # 0.55
+      - "time-based blind (SLEEP(), WAITFOR DELAY)"     # 0.85
+    parameters:
+      large_rowcount: 5000
+    correlation_key: "db:<host>:user:<user|ip>:sqli"
+    recommended_action: >
+      Correlate with the calling application and user; review DB audit logs for
+      the session; confirm parameterised queries in the code path; check data
+      volume leaving the database.

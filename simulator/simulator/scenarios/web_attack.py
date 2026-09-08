@@ -7,9 +7,19 @@ import random
 from simulator.models import WEB_HOSTS, make_event, rand_external_ip
 
 _SUSPICIOUS_PATHS = [
-    "/.env", "/.git/config", "/wp-login.php", "/admin", "/phpmyadmin",
-    "/api/../../etc/passwd", "/actuator/env", "/server-status", "/.aws/credentials",
-    "/cgi-bin/test.cgi", "/api/users?id=1%20OR%201=1", "/shell.php", "/vendor/phpunit",
+    "/.env",
+    "/.git/config",
+    "/wp-login.php",
+    "/admin",
+    "/phpmyadmin",
+    "/api/../../etc/passwd",
+    "/actuator/env",
+    "/server-status",
+    "/.aws/credentials",
+    "/cgi-bin/test.cgi",
+    "/api/users?id=1%20OR%201=1",
+    "/shell.php",
+    "/vendor/phpunit",
 ]
 
 
