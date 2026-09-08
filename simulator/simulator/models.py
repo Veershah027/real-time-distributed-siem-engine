@@ -76,6 +76,23 @@ def rand_external_ip() -> str:
     return str(EXTERNAL_SAMPLE[random.randint(1, 254)])
 
 
+# Each user has a stable "home" workstation IP plus an occasional second device,
+# so normal authentication traffic does NOT look like impossible-travel. Attack
+# scenarios deliberately override the source IP.
+_USER_HOME_IP: dict[str, str] = {}
+
+
+def user_home_ip(username: str) -> str:
+    if username not in _USER_HOME_IP:
+        h = int.from_bytes(username.encode()[:4].ljust(4, b"\0"), "big")
+        _USER_HOME_IP[username] = str(INTERNAL_NET[3000 + (h % 20000)])
+    # ~10% of the time the user is on a second device (still 1-2 distinct IPs)
+    if random.random() < 0.1:
+        base = _USER_HOME_IP[username].rsplit(".", 1)[0]
+        return f"{base}.{200 + (hash(username) % 40)}"
+    return _USER_HOME_IP[username]
+
+
 def now_iso() -> str:
     return datetime.now(UTC).isoformat().replace("+00:00", "Z")
 

@@ -20,6 +20,7 @@ from simulator.models import (
     make_event,
     rand_external_ip,
     rand_internal_ip,
+    user_home_ip,
 )
 
 _BENIGN_QUERIES = [
@@ -40,7 +41,7 @@ def _ssh_login() -> dict[str, Any]:
         event_type="authentication_success" if ok else "authentication_failure",
         severity="info" if ok else "low",
         status="success" if ok else "failure",
-        source_ip=rand_internal_ip(),
+        source_ip=user_home_ip(user),
         username=user,
         service="ssh",
         action="ssh login",
@@ -182,7 +183,7 @@ def _idp_event() -> dict[str, Any]:
         event_type="authentication_success" if ok else "authentication_failure",
         severity="info" if ok else "low",
         status="success" if ok else "failure",
-        source_ip=rand_internal_ip() if random.random() > 0.5 else rand_external_ip(),
+        source_ip=user_home_ip(user),
         username=user,
         service="auth-service",
         action="SAML assertion" if ok else "SAML auth failed",
