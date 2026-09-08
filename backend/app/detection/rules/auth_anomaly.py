@@ -39,31 +39,36 @@ class AuthAnomalyDetector(Detector):
         window = int(ctx.params["window_seconds"])
         threshold = int(ctx.params["distinct_ips"])
 
+        # Track successes and failures on separate windows. A pile of failed IPs
+        # against one account is password spraying (RULE-002 owns that from the
+        # source side); the anomaly worth its own alert is an account that
+        # *authenticates successfully* from many locations in a short window.
+        bucket = "authgeo_ok" if event.status == EventStatus.SUCCESS else "authgeo_fail"
         res = await ctx.windows.add_and_measure(
-            "authgeo",
+            bucket,
             event.username.lower(),
             event.source_ip,
             window_seconds=window,
             now=event.timestamp.timestamp(),
         )
+        if event.status != EventStatus.SUCCESS:
+            return None
         distinct_ips = len(res.unique_values)
         if distinct_ips < threshold:
             return None
 
-        confidence = min(0.9, 0.45 + 0.1 * (distinct_ips - threshold))
-        succeeded = event.status == EventStatus.SUCCESS
+        confidence = min(0.92, 0.5 + 0.1 * (distinct_ips - threshold))
         return Detection(
             rule_id=self.rule_id,
             kind=self.kind,
             title=f"Unusual authentication pattern for '{event.username}'",
             description=(
-                f"Account '{event.username}' authenticated from {distinct_ips} distinct "
-                f"source IPs within {res.span_seconds:.0f}s. Latest attempt "
-                f"{'succeeded' if succeeded else 'failed'} from {event.source_ip}."
+                f"Account '{event.username}' authenticated *successfully* from "
+                f"{distinct_ips} distinct source IPs within {res.span_seconds:.0f}s "
+                f"(latest from {event.source_ip}) — possible session hijack or "
+                f"shared/compromised credentials."
             ),
-            severity=Severity.HIGH
-            if succeeded and distinct_ips >= threshold + 2
-            else self.default_severity,
+            severity=Severity.HIGH if distinct_ips >= threshold + 2 else self.default_severity,
             confidence=round(confidence, 2),
             correlation_key=f"user:{event.username.lower()}:authgeo",
             source_ip=event.source_ip,
