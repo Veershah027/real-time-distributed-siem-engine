@@ -141,6 +141,78 @@ async def test_analytics_performance(app_client):
     assert "history" in r.json() and "current" in r.json()
 
 
+async def test_analytics_heatmap(app_client):
+    r = await app_client.get("/api/analytics/heatmap?hours=12")
+    assert r.status_code == 200
+    body = r.json()
+    assert "available" in body and body["severities"][0] == "critical"
+
+
+async def test_threats_top_hosts(app_client, seed_event):
+    r = await app_client.get("/api/threats/top-hosts?minutes=120")
+    assert r.status_code == 200
+    body = r.json()
+    assert "top_event_sources" in body and "top_attacked_hosts" in body
+
+
+async def test_metrics_null_when_worker_stale(app_client):
+    """With no worker running, measured metrics are null, not fabricated."""
+    from app.storage.redis_client import get_redis
+
+    await get_redis().delete("siem:worker:heartbeat", "siem:metrics:rolling")
+    r = await app_client.get("/api/metrics")
+    body = r.json()
+    assert body["worker_online"] is False
+    assert body["pipeline_latency_ms"] is None
+    assert body["events_per_second"] is None
+
+
+async def test_detection_rule_by_handle(app_client):
+    r = await app_client.get("/api/detections/SSH_BRUTE_FORCE")
+    assert r.status_code == 200
+    assert r.json()["rule_id"] == "RULE-001"
+
+
+async def test_system_status_new_components(app_client):
+    r = await app_client.get("/api/system/status")
+    comps = r.json()["components"]
+    assert "redpanda" in comps and "api" in comps
+    assert "consumer_lag" in comps["stream_processor"]
+
+
+async def test_alerts_active_filter(app_client):
+    from app.detection.base import Detection
+    from app.detection.correlation import AlertCorrelator
+    from app.schemas.enums import DetectionKind, Severity
+    from app.storage.db import session_scope
+    from app.storage.repositories import AlertRepository
+
+    async with session_scope() as s:
+        for i in range(3):
+            await AlertCorrelator(AlertRepository(s)).apply(
+                Detection(
+                    rule_id="RULE-003",
+                    kind=DetectionKind.RULE,
+                    title=f"scan {i}",
+                    description="d",
+                    severity=Severity.HIGH,
+                    confidence=0.8,
+                    correlation_key=f"active-test:{uuid.uuid4()}",
+                    source_ip="203.0.113.10",
+                    affected_host="h",
+                    recommended_action="x",
+                    triggered_at=datetime.now(UTC),
+                )
+            )
+        alerts = (await AlertRepository(s).search(limit=3))[0]
+        resolved_id = alerts[0].alert_id
+    await app_client.patch(f"/api/alerts/{resolved_id}", json={"status": "resolved"})
+
+    active = (await app_client.get("/api/alerts?active=true&limit=100")).json()
+    assert all(a["status"] in ("open", "acknowledged", "investigating") for a in active["items"])
+    assert str(resolved_id) not in {a["alert_id"] for a in active["items"]}
+
+
 async def test_system_status(app_client):
     r = await app_client.get("/api/system/status")
     assert r.status_code == 200

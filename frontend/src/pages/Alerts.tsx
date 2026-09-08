@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { api } from "@/lib/api";
@@ -25,16 +25,13 @@ export function Alerts() {
   const [offset, setOffset] = useState(0);
   const [view, setView] = useState<"active" | "all">("active");
 
-  useEffect(() => {
-    if (view === "active" && !statusF) return;
-  }, [view, statusF]);
-
   const metricsQ = useQuery({ queryKey: ["metrics"], queryFn: api.metrics, refetchInterval: 5000 });
   const query = useQuery({
     queryKey: ["alerts", statusF, sevF, offset, view],
     queryFn: () =>
       api.alerts({
         status: statusF || undefined,
+        active: view === "active" && !statusF ? true : undefined,
         severity: sevF || undefined,
         limit: PAGE,
         offset,
@@ -44,12 +41,8 @@ export function Alerts() {
   });
 
   const m = metricsQ.data;
-  const rows = (query.data?.items ?? []).filter((a) =>
-    view === "active"
-      ? ["open", "acknowledged", "investigating"].includes(a.status) || statusF
-      : true,
-  );
-  const total = view === "active" && !statusF ? (m?.active_alerts_total ?? rows.length) : query.data?.total ?? 0;
+  const rows = query.data?.items ?? [];
+  const total = query.data?.total ?? 0;
 
   const columns: Column<Alert>[] = [
     { key: "sev", header: "Severity", width: "92px", render: (a) => <SeverityBadge severity={a.severity} /> },

@@ -250,6 +250,7 @@ class AlertRepository:
         self,
         *,
         status: str | None = None,
+        active_only: bool = False,
         severity: str | None = None,
         rule_id: str | None = None,
         source_ip: str | None = None,
@@ -259,6 +260,8 @@ class AlertRepository:
         base = select(Alert)
         if status:
             base = base.where(Alert.status == status)
+        elif active_only:
+            base = base.where(Alert.status.in_(_ACTIVE_STATUSES))
         if severity:
             base = base.where(Alert.severity == severity)
         if rule_id:

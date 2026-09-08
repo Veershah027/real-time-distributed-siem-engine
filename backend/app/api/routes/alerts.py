@@ -22,6 +22,7 @@ async def list_alerts(
     session: DBSession,
     page: PaginationDep,
     status: AlertStatus | None = Query(None),
+    active: bool = Query(False, description="only non-terminal alerts (open/ack/investigating)"),
     severity: str | None = Query(None),
     rule_id: str | None = Query(None),
     source_ip: str | None = Query(None),
@@ -29,6 +30,7 @@ async def list_alerts(
     repo = AlertRepository(session)
     rows, total = await repo.search(
         status=status.value if status else None,
+        active_only=active and status is None,
         severity=severity,
         rule_id=rule_id,
         source_ip=source_ip,

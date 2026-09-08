@@ -90,13 +90,19 @@ Full detail: [`docs/architecture.md`](docs/architecture.md) ·
 - **Alert correlation** — N events from one attack collapse into one alert with
   `event_count`, `first_seen`/`last_seen`, involved users/hosts, and capped
   evidence.
-- **Alert triage API** — `OPEN → ACKNOWLEDGED → RESOLVED / FALSE_POSITIVE` with a
-  validated state machine and an audit trail.
-- **Real-time dashboard** — WebSocket-fed SOC console: live event stream, alert
-  feed, summary cards, and charts (events/alerts over time, severity mix, top
-  IPs, event types). No polling for the live views.
-- **Simulator control panel** — start/stop, rate slider, scenario picker,
-  attack-ratio, burst mode — all from the dashboard.
+- **Incident workflow** — `OPEN → ACKNOWLEDGED → INVESTIGATING → RESOLVED`
+  (+ `FALSE_POSITIVE`), a server-validated state machine with an audit trail.
+- **SOC command console** — 13-page WebSocket-fed operations interface: Security
+  Overview, Live Events (real-time stream + search/history explorer), Alert
+  Queue, an Alert Investigation drawer (evidence, detection logic, correlated
+  timeline, related events, response, workflow stepper), Detection Rules,
+  Anomalies (flagged + live EWMA baselines), Threat Activity (timeseries,
+  rule frequency, top talkers, hour×severity heatmap), Event/Source Analytics,
+  Pipeline Performance, Infrastructure, Attack Simulator, Demo Scenarios,
+  Settings. No polling for live views; every unavailable metric renders as `—`,
+  never fabricated.
+- **Simulator control panel** — start/stop, intensity, scenario picker,
+  attack-ratio, burst mode, one-click demo scenarios — all from the console.
 - **Pluggable threat-intel enrichment** — deterministic synthetic provider by
   default; fully offline; no API keys required.
 - **Observability** — structured JSON logs; Prometheus exposition on the API
@@ -202,11 +208,14 @@ Scenarios: `ssh_brute_force`, `port_scan`, `credential_attack`,
 `GET /health` · `GET /health/ready` · `GET /api/events` · `GET /api/events/{id}`
 · `GET /api/alerts` · `GET /api/alerts/{id}` · `GET /api/alerts/{id}/events` ·
 `PATCH /api/alerts/{id}` · `GET /api/metrics` · `GET /api/metrics/timeseries` ·
-`GET /api/threats/top-ips` · `GET /api/threats/event-types` ·
-`GET /api/threats/enrich/{ip}` · `GET /api/detections` · `GET /api/detections/{id}`
-· `GET /api/system/status` · `POST /api/simulator/start|stop|configure` ·
-`GET /api/simulator/status` · `GET /ws` (WebSocket) · `GET /api/sse` ·
-`GET /metrics` (Prometheus).
+`GET /api/detections` · `GET /api/detections/{id}` · `GET /api/anomalies` ·
+`GET /api/analytics/threat-activity` · `GET /api/analytics/heatmap` ·
+`GET /api/analytics/performance` · `GET /api/threats/top-ips` ·
+`GET /api/threats/top-hosts` · `GET /api/threats/event-types` ·
+`GET /api/threats/enrich/{ip}` · `GET /api/system/status` ·
+`POST /api/simulator/start|stop|configure` · `GET /api/simulator/status` ·
+`GET /ws` (WebSocket) · `GET /api/sse` · `GET /metrics` (Prometheus, API) ·
+`:9109/metrics` (Prometheus, stream processor).
 
 Interactive docs at `/docs`; schema at `/openapi.json`.
 
@@ -329,13 +338,14 @@ from functionality that is implemented and covered by tests.
   plus an explainable EWMA/z-score anomaly layer and optional Isolation Forest.
 - Implemented alert correlation that collapses many attack events into a single
   alert with evidence, `first/last_seen`, and `event_count`, exposed through a
-  FastAPI REST + WebSocket API with a validated triage state machine and audit
-  logging.
-- Delivered a React/TypeScript SOC dashboard (live event stream, alert triage,
-  time-series and severity charts, simulator control) and containerized the whole
-  platform with Docker Compose, with GitHub Actions running lint, type checks,
-  Bandit/pip-audit, a coverage-gated pytest suite, and an end-to-end compose
-  smoke test.
+  FastAPI REST + WebSocket API with an `OPEN → ACKNOWLEDGED → INVESTIGATING →
+  RESOLVED` incident workflow and audit logging.
+- Built a 13-page React/TypeScript SOC command console — real-time event stream,
+  alert investigation drawer with correlated timeline, anomaly baselines,
+  time×severity heatmap, and a measured pipeline-performance view — and
+  containerized the whole platform with Docker Compose, with GitHub Actions
+  running lint, type checks, Bandit/pip-audit, a coverage-gated pytest suite, and
+  an end-to-end compose smoke test.
 
 ## Author
 
